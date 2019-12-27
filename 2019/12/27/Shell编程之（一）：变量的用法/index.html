@@ -1,4 +1,290 @@
-<!-- build time:Fri Dec 27 2019 23:40:11 GMT+0800 (China Standard Time) --><!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=2"><meta name="theme-color" content="#222"><meta name="generator" content="Hexo 4.2.0"><link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png"><link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png"><link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png"><link rel="mask-icon" href="/images/logo.svg" color="#222"><link rel="stylesheet" href="/css/main.css"><link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css"><script id="hexo-configurations">var NexT=window.NexT||{},CONFIG={hostname:new URL("http://yoursite.com").hostname,root:"/",scheme:"Gemini",version:"7.6.0",exturl:!1,sidebar:{position:"left",display:"post",padding:18,offset:12,onmobile:!1},copycode:{enable:!1,show_result:!1,style:null},back2top:{enable:!0,sidebar:!1,scrollpercent:!1},bookmark:{enable:!1,color:"#222",save:"auto"},fancybox:!1,mediumzoom:!1,lazyload:!1,pangu:!1,comments:{style:"tabs",active:null,storage:!0,lazyload:!1,nav:null},algolia:{appID:"",apiKey:"",indexName:"",hits:{per_page:10},labels:{input_placeholder:"Search for Posts",hits_empty:"We didn't find any results for the search: ${query}",hits_stats:"${hits} results found in ${time} ms"}},localsearch:{enable:!1,trigger:"auto",top_n_per_article:1,unescape:!1,preload:!1},path:"search.xml",motion:{enable:!0,async:!1,transition:{post_block:"fadeIn",post_header:"slideDownIn",post_body:"slideDownIn",coll_header:"slideLeftIn",sidebar:"slideUpIn"}}}</script><meta name="description" content="计算字符串长度1$&amp;#123;#String&amp;#125;1expr length &quot;$String&quot;获取子串在字符串中的索引位置1expr index $String $subString  #切片,字符查找，返回第一个"><meta property="og:type" content="article"><meta property="og:title" content="Shell编程之（一）：变量的用法"><meta property="og:url" content="http://yoursite.com/2019/12/27/Shell%E7%BC%96%E7%A8%8B%E4%B9%8B%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E5%8F%98%E9%87%8F%E7%9A%84%E7%94%A8%E6%B3%95/index.html"><meta property="og:site_name" content="Frdqy的博客"><meta property="og:description" content="计算字符串长度1$&amp;#123;#String&amp;#125;1expr length &quot;$String&quot;获取子串在字符串中的索引位置1expr index $String $subString  #切片,字符查找，返回第一个"><meta property="og:locale" content="zh_CN"><meta property="article:published_time" content="2019-12-27T14:13:36.000Z"><meta property="article:modified_time" content="2019-12-27T15:31:44.473Z"><meta property="article:author" content="Frdqy"><meta name="twitter:card" content="summary"><link rel="canonical" href="http://yoursite.com/2019/12/27/Shell%E7%BC%96%E7%A8%8B%E4%B9%8B%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E5%8F%98%E9%87%8F%E7%9A%84%E7%94%A8%E6%B3%95/"><script id="page-configurations">CONFIG.page={sidebar:"",isHome:!1,isPost:!0}</script><title>Shell编程之（一）：变量的用法 | Frdqy的博客</title><noscript><style>.sidebar-inner,.use-motion .brand,.use-motion .collection-header,.use-motion .comments,.use-motion .menu-item,.use-motion .pagination,.use-motion .post-block,.use-motion .post-body,.use-motion .post-header{opacity:initial}.use-motion .site-subtitle,.use-motion .site-title{opacity:initial;top:initial}.use-motion .logo-line-before i{left:initial}.use-motion .logo-line-after i{right:initial}</style></noscript><link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml"></head><body itemscope itemtype="http://schema.org/WebPage"><div class="container use-motion"><div class="headband"></div><header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="header-inner"><div class="site-brand-container"><div class="site-meta"><div><a href="/" class="brand" rel="start"><span class="logo-line-before"><i></i></span> <span class="site-title">Frdqy的博客</span> <span class="logo-line-after"><i></i></span></a></div><p class="site-subtitle">记录默默到无闻的学习路</p></div><div class="site-nav-toggle"><div class="toggle" aria-label="切换导航栏"><span class="toggle-line toggle-line-first"></span> <span class="toggle-line toggle-line-middle"></span> <span class="toggle-line toggle-line-last"></span></div></div></div><nav class="site-nav"><ul id="menu" class="menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">0</span></a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">0</span></a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">5</span></a></li></ul></nav></div></header><div class="back-to-top"><i class="fa fa-arrow-up"></i> <span>0%</span></div><main class="main"><div class="main-inner"><div class="content-wrap"><div class="content"><div class="posts-expand"><article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN"><link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/12/27/Shell%E7%BC%96%E7%A8%8B%E4%B9%8B%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E5%8F%98%E9%87%8F%E7%9A%84%E7%94%A8%E6%B3%95/"><span hidden itemprop="author" itemscope itemtype="http://schema.org/Person"><meta itemprop="image" content="/images/avatar.gif"><meta itemprop="name" content="Frdqy"><meta itemprop="description" content=""></span><span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization"><meta itemprop="name" content="Frdqy的博客"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">Shell编程之（一）：变量的用法</h1><div class="post-meta"><span class="post-meta-item"><span class="post-meta-item-icon"><i class="fa fa-calendar-o"></i> </span><span class="post-meta-item-text">发表于</span> <time title="创建时间：2019-12-27 22:13:36 / 修改时间：23:31:44" itemprop="dateCreated datePublished" datetime="2019-12-27T22:13:36+08:00">2019-12-27</time></span></div></header><div class="post-body" itemprop="articleBody"><h3 id="计算字符串长度"><a href="#计算字符串长度" class="headerlink" title="计算字符串长度"></a>计算字符串长度</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$&#123;#String&#125;</span></span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">expr length <span class="string">"<span class="variable">$String</span>"</span></span><br></pre></td></tr></table></figure><h3 id="获取子串在字符串中的索引位置"><a href="#获取子串在字符串中的索引位置" class="headerlink" title="获取子串在字符串中的索引位置"></a>获取子串在字符串中的索引位置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">expr index <span class="variable">$String</span> <span class="variable">$subString</span>  <span class="comment">#切片,字符查找，返回第一个</span></span><br></pre></td></tr></table></figure><a id="more"></a><h3 id="计算子串长度"><a href="#计算子串长度" class="headerlink" title="计算子串长度"></a>计算子串长度</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">expr match <span class="variable">$String</span> subString</span><br></pre></td></tr></table></figure><h3 id="抽取子串"><a href="#抽取子串" class="headerlink" title="抽取子串"></a>抽取子串</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$&#123;string:position:length&#125;</span><span class="comment">#从position取length个</span></span><br><span class="line"><span class="variable">$&#123;String:position&#125;</span>		<span class="comment">#从String中的position开始</span></span><br><span class="line"><span class="variable">$&#123;String: -position&#125;</span>	<span class="comment">#从右往左(注意空格)</span></span><br><span class="line"><span class="variable">$&#123;String:(position)&#125;</span>	<span class="comment">#从左往右</span></span><br><span class="line"><span class="variable">$expr</span> substr <span class="variable">$String</span> <span class="variable">$position</span> <span class="variable">$length</span>	<span class="comment">#与二类似</span></span><br></pre></td></tr></table></figure><h3 id="变量替换："><a href="#变量替换：" class="headerlink" title="变量替换："></a>变量替换：</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$&#123;变量名#正则&#125;</span>	<span class="comment">#从开头匹配最短删除</span></span><br><span class="line"><span class="variable">$&#123;变量名##正则&#125;</span>	<span class="comment">#从开头匹配最长删除</span></span><br><span class="line"><span class="variable">$&#123;变量名%正则&#125;</span>	<span class="comment">#从尾部匹配最短删除</span></span><br><span class="line"><span class="variable">$&#123;变量名%%正则&#125;</span>	<span class="comment">#从尾部匹配最长删除</span></span><br><span class="line"><span class="variable">$&#123;变量名/旧字符串/新字符串&#125;</span>	<span class="comment">#第一个字符串替换</span></span><br><span class="line"><span class="variable">$&#123;变量名//旧字符串/新字符串&#125;</span>	<span class="comment">#全部字符串替换</span></span><br><span class="line"><span class="comment">#注意：使用expr索引计数从1开始，使用$&#123;&#125;索引计数从0开始</span></span><br></pre></td></tr></table></figure><h3 id="命令替换"><a href="#命令替换" class="headerlink" title="命令替换"></a>命令替换</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">``</span><br><span class="line">$()</span><br></pre></td></tr></table></figure><h3 id="数学运算"><a href="#数学运算" class="headerlink" title="数学运算"></a>数学运算</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(())	<span class="comment">#注意与命令替换区分</span></span><br></pre></td></tr></table></figure><h3 id="应用"><a href="#应用" class="headerlink" title="应用"></a>应用</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ps -ef	<span class="comment">#完整格式显示所有进程</span></span><br><span class="line">grep -v <span class="comment">#不输出查询内容，用于过滤grep本身</span></span><br><span class="line">wc -l 	<span class="comment">#统计有多少行</span></span><br><span class="line">ps -ef | grep nginx | grep -v grep | wc -l 	<span class="comment">#判断nginx是否存活</span></span><br></pre></td></tr></table></figure><h3 id="有类型变量"><a href="#有类型变量" class="headerlink" title="有类型变量"></a>有类型变量</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">declare</span> -r	<span class="comment">#声明变量为只读类型</span></span><br><span class="line"><span class="built_in">declare</span> -i 	<span class="comment">#声明变量为整型</span></span><br><span class="line"><span class="built_in">declare</span> -f 	<span class="comment">#在脚本中显示定义的函数和内容</span></span><br><span class="line"><span class="built_in">declare</span> -F 	<span class="comment">#在脚本中显示定义的函数</span></span><br><span class="line"><span class="built_in">declare</span> -a 	<span class="comment">#声明数组</span></span><br><span class="line">arr=(<span class="string">"jones"</span> <span class="string">"mike"</span> <span class="string">"kobe"</span> <span class="string">"jordan"</span>) 	<span class="comment">#以空格分隔</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$&#123;arr[@]&#125;</span>	<span class="comment">#获取整个数组</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$&#123;#arr[@]&#125;</span>  <span class="comment">#获取整个数组长度</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$&#123;#arr[i]&#125;</span>	<span class="comment">#获取某个数组元素长度</span></span><br><span class="line"><span class="built_in">declare</span> -x 			<span class="comment">#声明环境变量</span></span><br><span class="line"><span class="comment">#取消某个设置只需要“-”改为“+”即可</span></span><br></pre></td></tr></table></figure><h3 id="expr语法格式"><a href="#expr语法格式" class="headerlink" title="expr语法格式"></a>expr语法格式</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">expr <span class="variable">$num1</span> operator <span class="variable">$num2</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#操作符对照表(注意转义)</span></span><br><span class="line">num1 | num2	num1	<span class="comment">#不为空且非0，返回num1；否则返回num2</span></span><br><span class="line">num1 &amp; num2 num1	  <span class="comment">#不为空且非0，返回num1；否则返回0</span></span><br><span class="line"><span class="comment">#判断整数</span></span><br><span class="line">expr <span class="variable">$num</span> + 1	<span class="comment">#如果执行成功则为整数(成功返回1)</span></span><br></pre></td></tr></table></figure><h3 id="bc进行浮点数计算"><a href="#bc进行浮点数计算" class="headerlink" title="bc进行浮点数计算"></a>bc进行浮点数计算</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">"23 + 5"</span> | bc</span><br><span class="line"><span class="built_in">echo</span> <span class="string">"23.15 + 4.3"</span> | bc</span><br><span class="line"><span class="built_in">echo</span> <span class="string">"scale=4;23.5/3.5"</span> | bc</span><br></pre></td></tr></table></figure></div><footer class="post-footer"><div class="post-nav"><div class="post-nav-item"><a href="/2019/12/27/hello-world/" rel="prev" title="Hello World"><i class="fa fa-chevron-left"></i> Hello World</a></div><div class="post-nav-item"><a href="/2019/12/27/Shell%E7%BC%96%E7%A8%8B%E4%B9%8B%EF%BC%88%E4%BA%8C%EF%BC%89%EF%BC%9A%E5%87%BD%E6%95%B0%E7%9A%84%E4%BD%BF%E7%94%A8/" rel="next" title="Shell编程之（二）：函数的使用">Shell编程之（二）：函数的使用 <i class="fa fa-chevron-right"></i></a></div></div></footer></article></div></div><script>window.addEventListener('tabs:register', () => {
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="计算字符串长度1$&amp;#123;#String&amp;#125;  1expr length &quot;$String&quot;  获取子串在字符串中的索引位置1expr index $String $subString  #切片,字符查找，返回第一个">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Shell编程之（一）：变量的用法">
+<meta property="og:url" content="http://yoursite.com/2019/12/27/Shell%E7%BC%96%E7%A8%8B%E4%B9%8B%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E5%8F%98%E9%87%8F%E7%9A%84%E7%94%A8%E6%B3%95/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="计算字符串长度1$&amp;#123;#String&amp;#125;  1expr length &quot;$String&quot;  获取子串在字符串中的索引位置1expr index $String $subString  #切片,字符查找，返回第一个">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-12-27T14:13:36.000Z">
+<meta property="article:modified_time" content="2019-12-27T15:31:44.473Z">
+<meta property="article:author" content="Frdqy">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2019/12/27/Shell%E7%BC%96%E7%A8%8B%E4%B9%8B%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E5%8F%98%E9%87%8F%E7%9A%84%E7%94%A8%E6%B3%95/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Shell编程之（一）：变量的用法 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">0</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">0</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">5</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/12/27/Shell%E7%BC%96%E7%A8%8B%E4%B9%8B%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E5%8F%98%E9%87%8F%E7%9A%84%E7%94%A8%E6%B3%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Shell编程之（一）：变量的用法
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2019-12-27 22:13:36 / 修改时间：23:31:44" itemprop="dateCreated datePublished" datetime="2019-12-27T22:13:36+08:00">2019-12-27</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="计算字符串长度"><a href="#计算字符串长度" class="headerlink" title="计算字符串长度"></a>计算字符串长度</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$&#123;#String&#125;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">expr length <span class="string">"<span class="variable">$String</span>"</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="获取子串在字符串中的索引位置"><a href="#获取子串在字符串中的索引位置" class="headerlink" title="获取子串在字符串中的索引位置"></a>获取子串在字符串中的索引位置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">expr index <span class="variable">$String</span> <span class="variable">$subString</span>  <span class="comment">#切片,字符查找，返回第一个</span></span><br></pre></td></tr></table></figure>
+<a id="more"></a>
+<h3 id="计算子串长度"><a href="#计算子串长度" class="headerlink" title="计算子串长度"></a>计算子串长度</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">expr match <span class="variable">$String</span> subString</span><br></pre></td></tr></table></figure>
+
+<h3 id="抽取子串"><a href="#抽取子串" class="headerlink" title="抽取子串"></a>抽取子串</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$&#123;string:position:length&#125;</span><span class="comment">#从position取length个</span></span><br><span class="line"><span class="variable">$&#123;String:position&#125;</span>		<span class="comment">#从String中的position开始</span></span><br><span class="line"><span class="variable">$&#123;String: -position&#125;</span>	<span class="comment">#从右往左(注意空格)</span></span><br><span class="line"><span class="variable">$&#123;String:(position)&#125;</span>	<span class="comment">#从左往右</span></span><br><span class="line"><span class="variable">$expr</span> substr <span class="variable">$String</span> <span class="variable">$position</span> <span class="variable">$length</span>	<span class="comment">#与二类似</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="变量替换："><a href="#变量替换：" class="headerlink" title="变量替换："></a>变量替换：</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$&#123;变量名#正则&#125;</span>	<span class="comment">#从开头匹配最短删除</span></span><br><span class="line"><span class="variable">$&#123;变量名##正则&#125;</span>	<span class="comment">#从开头匹配最长删除</span></span><br><span class="line"><span class="variable">$&#123;变量名%正则&#125;</span>	<span class="comment">#从尾部匹配最短删除</span></span><br><span class="line"><span class="variable">$&#123;变量名%%正则&#125;</span>	<span class="comment">#从尾部匹配最长删除</span></span><br><span class="line"><span class="variable">$&#123;变量名/旧字符串/新字符串&#125;</span>	<span class="comment">#第一个字符串替换</span></span><br><span class="line"><span class="variable">$&#123;变量名//旧字符串/新字符串&#125;</span>	<span class="comment">#全部字符串替换</span></span><br><span class="line"><span class="comment">#注意：使用expr索引计数从1开始，使用$&#123;&#125;索引计数从0开始</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="命令替换"><a href="#命令替换" class="headerlink" title="命令替换"></a>命令替换</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">``</span><br><span class="line">$()</span><br></pre></td></tr></table></figure>
+
+
+<h3 id="数学运算"><a href="#数学运算" class="headerlink" title="数学运算"></a>数学运算</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(())	<span class="comment">#注意与命令替换区分</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="应用"><a href="#应用" class="headerlink" title="应用"></a>应用</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ps -ef	<span class="comment">#完整格式显示所有进程</span></span><br><span class="line">grep -v <span class="comment">#不输出查询内容，用于过滤grep本身</span></span><br><span class="line">wc -l 	<span class="comment">#统计有多少行</span></span><br><span class="line">ps -ef | grep nginx | grep -v grep | wc -l 	<span class="comment">#判断nginx是否存活</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="有类型变量"><a href="#有类型变量" class="headerlink" title="有类型变量"></a>有类型变量</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">declare</span> -r	<span class="comment">#声明变量为只读类型</span></span><br><span class="line"><span class="built_in">declare</span> -i 	<span class="comment">#声明变量为整型</span></span><br><span class="line"><span class="built_in">declare</span> -f 	<span class="comment">#在脚本中显示定义的函数和内容</span></span><br><span class="line"><span class="built_in">declare</span> -F 	<span class="comment">#在脚本中显示定义的函数</span></span><br><span class="line"><span class="built_in">declare</span> -a 	<span class="comment">#声明数组</span></span><br><span class="line">arr=(<span class="string">"jones"</span> <span class="string">"mike"</span> <span class="string">"kobe"</span> <span class="string">"jordan"</span>) 	<span class="comment">#以空格分隔</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$&#123;arr[@]&#125;</span>	<span class="comment">#获取整个数组</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$&#123;#arr[@]&#125;</span>  <span class="comment">#获取整个数组长度</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$&#123;#arr[i]&#125;</span>	<span class="comment">#获取某个数组元素长度</span></span><br><span class="line"><span class="built_in">declare</span> -x 			<span class="comment">#声明环境变量</span></span><br><span class="line"><span class="comment">#取消某个设置只需要“-”改为“+”即可</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="expr语法格式"><a href="#expr语法格式" class="headerlink" title="expr语法格式"></a>expr语法格式</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">expr <span class="variable">$num1</span> operator <span class="variable">$num2</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#操作符对照表(注意转义)</span></span><br><span class="line">num1 | num2	num1	<span class="comment">#不为空且非0，返回num1；否则返回num2</span></span><br><span class="line">num1 &amp; num2 num1	  <span class="comment">#不为空且非0，返回num1；否则返回0</span></span><br><span class="line"><span class="comment">#判断整数</span></span><br><span class="line">expr <span class="variable">$num</span> + 1	<span class="comment">#如果执行成功则为整数(成功返回1)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="bc进行浮点数计算"><a href="#bc进行浮点数计算" class="headerlink" title="bc进行浮点数计算"></a>bc进行浮点数计算</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">"23 + 5"</span> | bc</span><br><span class="line"><span class="built_in">echo</span> <span class="string">"23.15 + 4.3"</span> | bc</span><br><span class="line"><span class="built_in">echo</span> <span class="string">"scale=4;23.5/3.5"</span> | bc</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/12/27/hello-world/" rel="prev" title="Hello World">
+      <i class="fa fa-chevron-left"></i> Hello World
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/12/27/Shell%E7%BC%96%E7%A8%8B%E4%B9%8B%EF%BC%88%E4%BA%8C%EF%BC%89%EF%BC%9A%E5%87%BD%E6%95%B0%E7%9A%84%E4%BD%BF%E7%94%A8/" rel="next" title="Shell编程之（二）：函数的使用">
+      Shell编程之（二）：函数的使用 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
     let activeClass = CONFIG.comments.activeClass;
     if (CONFIG.comments.storage) {
       activeClass = localStorage.getItem('comments_active') || activeClass;
@@ -16,4 +302,134 @@
       let commentClass = event.target.classList[1];
       localStorage.setItem('comments_active', commentClass);
     });
-  }</script></div><div class="toggle sidebar-toggle"><span class="toggle-line toggle-line-first"></span> <span class="toggle-line toggle-line-middle"></span> <span class="toggle-line toggle-line-last"></span></div><aside class="sidebar"><div class="sidebar-inner"><ul class="sidebar-nav motion-element"><li class="sidebar-nav-toc">文章目录</li><li class="sidebar-nav-overview">站点概览</li></ul><div class="post-toc-wrap sidebar-panel"><div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#计算字符串长度"><span class="nav-number">1.</span> <span class="nav-text">计算字符串长度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#获取子串在字符串中的索引位置"><span class="nav-number">2.</span> <span class="nav-text">获取子串在字符串中的索引位置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#计算子串长度"><span class="nav-number">3.</span> <span class="nav-text">计算子串长度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#抽取子串"><span class="nav-number">4.</span> <span class="nav-text">抽取子串</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#变量替换："><span class="nav-number">5.</span> <span class="nav-text">变量替换：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#命令替换"><span class="nav-number">6.</span> <span class="nav-text">命令替换</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数学运算"><span class="nav-number">7.</span> <span class="nav-text">数学运算</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用"><span class="nav-number">8.</span> <span class="nav-text">应用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#有类型变量"><span class="nav-number">9.</span> <span class="nav-text">有类型变量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#expr语法格式"><span class="nav-number">10.</span> <span class="nav-text">expr语法格式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bc进行浮点数计算"><span class="nav-number">11.</span> <span class="nav-text">bc进行浮点数计算</span></a></li></ol></div></div><div class="site-overview-wrap sidebar-panel"><div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person"><p class="site-author-name" itemprop="name">Frdqy</p><div class="site-description" itemprop="description"></div></div><div class="site-state-wrap motion-element"><nav class="site-state"><div class="site-state-item site-state-posts"><a href="/archives/"><span class="site-state-item-count">5</span> <span class="site-state-item-name">日志</span></a></div></nav></div></div></div></aside><div id="sidebar-dimmer"></div></div></main><footer class="footer"><div class="footer-inner"><div class="copyright">&copy; <span itemprop="copyrightYear">2019</span> <span class="with-love"><i class="fa fa-user"></i> </span><span class="author" itemprop="copyrightHolder">Frdqy</span></div><div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0</div><span class="post-meta-divider">|</span><div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0</div></div></footer></div><script src="/lib/anime.min.js"></script><script src="/lib/velocity/velocity.min.js"></script><script src="/lib/velocity/velocity.ui.min.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/pisces.js"></script><script src="/js/next-boot.js"></script></body></html><!-- rebuild by neat -->
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#计算字符串长度"><span class="nav-number">1.</span> <span class="nav-text">计算字符串长度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#获取子串在字符串中的索引位置"><span class="nav-number">2.</span> <span class="nav-text">获取子串在字符串中的索引位置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#计算子串长度"><span class="nav-number">3.</span> <span class="nav-text">计算子串长度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#抽取子串"><span class="nav-number">4.</span> <span class="nav-text">抽取子串</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#变量替换："><span class="nav-number">5.</span> <span class="nav-text">变量替换：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#命令替换"><span class="nav-number">6.</span> <span class="nav-text">命令替换</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数学运算"><span class="nav-number">7.</span> <span class="nav-text">数学运算</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用"><span class="nav-number">8.</span> <span class="nav-text">应用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#有类型变量"><span class="nav-number">9.</span> <span class="nav-text">有类型变量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#expr语法格式"><span class="nav-number">10.</span> <span class="nav-text">expr语法格式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bc进行浮点数计算"><span class="nav-number">11.</span> <span class="nav-text">bc进行浮点数计算</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
