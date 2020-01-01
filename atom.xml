@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://yoursite.com/"/>
-  <updated>2019-12-31T08:28:45.979Z</updated>
+  <updated>2020-01-01T11:24:37.511Z</updated>
   <id>http://yoursite.com/</id>
   
   <author>
@@ -15,6 +15,29 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>文件特殊权限</title>
+    <link href="http://yoursite.com/2020/01/01/%E6%96%87%E4%BB%B6%E7%89%B9%E6%AE%8A%E6%9D%83%E9%99%90/"/>
+    <id>http://yoursite.com/2020/01/01/%E6%96%87%E4%BB%B6%E7%89%B9%E6%AE%8A%E6%9D%83%E9%99%90/</id>
+    <published>2020-01-01T11:23:25.000Z</published>
+    <updated>2020-01-01T11:24:37.511Z</updated>
+    
+    <content type="html"><![CDATA[<h3 id="文件特殊权限"><a href="#文件特殊权限" class="headerlink" title="文件特殊权限"></a>文件特殊权限</h3><p>SUID、SGID、STICKY</p><a id="more"></a><h3 id="安全上下文"><a href="#安全上下文" class="headerlink" title="安全上下文"></a>安全上下文</h3><ol><li>进程以某用户的身份运行：进程是发起此进程用户的代理，因此以此用户的身份和权限完成所有操作</li><li>权限匹配模型：<ol><li>判断进程的属主是否为被访问文件的属主 ，如果是则使用属主权限访问，否则进入2</li><li>判断进程的属主是否属于被访问文件的属组，如果是就使用属组权限，否则进入3</li><li>应用other模型</li></ol></li></ol><h3 id="SUID"><a href="#SUID" class="headerlink" title="SUID"></a>SUID</h3><p>默认情况下用户发起的进程其属主是其发起者。而设置SUID的进程执行时，其属主为进程自己的属主。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#/etc/shadow无访问权限</span></span><br><span class="line">[frdqy@localhost ~]$ ls -l /etc/shadow</span><br><span class="line">----------. 1 root root 1434 Dec 31 22:26 /etc/shadow</span><br><span class="line"></span><br><span class="line"><span class="comment">#以frdqy身份无法访问/etc/shadow，因为此时以使用cat的发起者权限来访问/etc/shadow，即other</span></span><br><span class="line">[frdqy@localhost ~]$ cat /etc/shadow</span><br><span class="line">cat: /etc/shadow: Permission denied</span><br><span class="line"></span><br><span class="line"><span class="comment">#此时cat并没有设置SUID权限</span></span><br><span class="line">[frdqy@localhost ~]$ ls -l /bin/cat</span><br><span class="line">-rwxr-xr-x. 1 root root 51856 May 11  2019 /bin/cat</span><br><span class="line"></span><br><span class="line"><span class="comment">#用root给cat设置SUID权限后</span></span><br><span class="line">[root@localhost frdqy]<span class="comment"># chmod u+s /bin/cat</span></span><br><span class="line">[root@localhost frdqy]<span class="comment"># ls -l /bin/cat</span></span><br><span class="line">-rwsr-xr-x. 1 root root 51856 May 11  2019 /bin/cat</span><br><span class="line"></span><br><span class="line"><span class="comment">#frdqy用户即可用cat查看/etc/shadow内容，因为此时cat进程使用的是其属主root权限，而不是进程的发起者</span></span><br><span class="line">[frdqy@localhost ~]$ cat /etc/shadow</span><br><span class="line">root:<span class="variable">$6</span><span class="variable">$RsZ</span>/8mPpOXX17jO8<span class="variable">$yeL</span>/BOfROjigWhsFEEwvF6ZDe3ldr/FJX9vvQFtzJCIWZngO5RhjLVRRgAeSg13ymfLWELIyl5R.sTBbGtP390::0:99999:7:::</span><br></pre></td></tr></table></figure><p>注意：</p><p>如果进程属主原本有执行权限，那么加了SUID后就变成s；如果进程属主原本没有执行权限，那么加SUID后就变成S。</p><h3 id="SGID"><a href="#SGID" class="headerlink" title="SGID"></a>SGID</h3><p>通常对目录设置，这样其他用户在该目录下创建文件时，文件的属组全都是目录的属组，主要为了方便同组用户的修改。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chmod g+|g- /dir</span><br></pre></td></tr></table></figure><h3 id="STICKY"><a href="#STICKY" class="headerlink" title="STICKY"></a>STICKY</h3><p>用于解决某一目录下每个用户都可以删除同组其他用户的文件问题，在该目录上设置STICKY后用户只能新建和删除自己的文件，不能删除同组其他用户的文件。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">chmod o+t|o-t /dir</span><br><span class="line"><span class="comment">#/tmp和/var/tmp默认具有STICKY权限</span></span><br></pre></td></tr></table></figure><h3 id="FACL"><a href="#FACL" class="headerlink" title="FACL"></a>FACL</h3><p>facl是文件的额外赋权机制，在原来的ugo之外，另一层让普通用户能控制赋权给另外的用户或组的赋权机制</p><h4 id="getfacl"><a href="#getfacl" class="headerlink" title="getfacl"></a>getfacl</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">getfacl file</span><br><span class="line">user:USERNAME:MODE</span><br><span class="line">group:GROUPNAME:MODE</span><br><span class="line"><span class="comment">#若username为空则为属主的权限，若groupname为空则为默认属组的权限</span></span><br></pre></td></tr></table></figure><h4 id="setfacl"><a href="#setfacl" class="headerlink" title="setfacl"></a>setfacl</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#赋权给用户</span></span><br><span class="line">setfacl -m u:USERNAME:MODE file</span><br><span class="line"><span class="comment">#赋权给组</span></span><br><span class="line">setfacl -m g:GROUPNAME:MODE file</span><br><span class="line"><span class="comment">#撤销赋权</span></span><br><span class="line">setfacl -x u:USERNAME:MODE file</span><br><span class="line">setfacl -x g:GROUPNAME:MODE file</span><br></pre></td></tr></table></figure><h3 id=""><a href="#" class="headerlink" title=""></a></h3><h3 id="访问控制顺序"><a href="#访问控制顺序" class="headerlink" title="访问控制顺序"></a>访问控制顺序</h3><p>首先，检查进程属主与被访问文件属主是否相同，相同则使用属主权限；否则检查被访问文件是否定义关于该用户的访问控制链表(facl)，有则应用该访问链表权限；否则检查此进程的属主是否是被访问文件的属组，是则应用属组访问权限，否则检查访问控制链表是否有该用属组的定义，若有则应用该属组权限。最后还不匹配就按other访问。</p>]]></content>
+    
+    <summary type="html">
+    
+      &lt;h3 id=&quot;文件特殊权限&quot;&gt;&lt;a href=&quot;#文件特殊权限&quot; class=&quot;headerlink&quot; title=&quot;文件特殊权限&quot;&gt;&lt;/a&gt;文件特殊权限&lt;/h3&gt;&lt;p&gt;SUID、SGID、STICKY&lt;/p&gt;
+    
+    </summary>
+    
+    
+      <category term="Linux" scheme="http://yoursite.com/categories/Linux/"/>
+    
+    
+      <category term="权限" scheme="http://yoursite.com/tags/%E6%9D%83%E9%99%90/"/>
+    
+  </entry>
   
   <entry>
     <title>Shell编程之（七）：脚本实战</title>
