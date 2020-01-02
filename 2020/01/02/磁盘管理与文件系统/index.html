@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="设备类型块随机访问，数据交换单位是块 字符线性访问，数据交换单位是字符">
+<meta property="og:type" content="article">
+<meta property="og:title" content="磁盘管理与文件系统">
+<meta property="og:url" content="http://yoursite.com/2020/01/02/%E7%A3%81%E7%9B%98%E7%AE%A1%E7%90%86%E4%B8%8E%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="设备类型块随机访问，数据交换单位是块 字符线性访问，数据交换单位是字符">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-02T14:20:26.000Z">
+<meta property="article:modified_time" content="2020-01-02T14:25:47.253Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="磁盘管理">
+<meta property="article:tag" content="文件系统">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/02/%E7%A3%81%E7%9B%98%E7%AE%A1%E7%90%86%E4%B8%8E%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>磁盘管理与文件系统 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">15</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">2</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">15</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/02/%E7%A3%81%E7%9B%98%E7%AE%A1%E7%90%86%E4%B8%8E%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          磁盘管理与文件系统
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-02 22:20:26 / 修改时间：22:25:47" itemprop="dateCreated datePublished" datetime="2020-01-02T22:20:26+08:00">2020-01-02</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="设备类型"><a href="#设备类型" class="headerlink" title="设备类型"></a>设备类型</h3><h4 id="块"><a href="#块" class="headerlink" title="块"></a>块</h4><p>随机访问，数据交换单位是块</p>
+<h4 id="字符"><a href="#字符" class="headerlink" title="字符"></a>字符</h4><p>线性访问，数据交换单位是字符</p>
+<a id="more"></a>
+
+
+<h3 id="设备文件"><a href="#设备文件" class="headerlink" title="设备文件"></a>设备文件</h3><p>关联至设备的驱动程序；设备的访问入口</p>
+<h4 id="命名"><a href="#命名" class="headerlink" title="命名"></a>命名</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">/dev/sd[a-z]<span class="comment">#</span></span><br><span class="line"><span class="comment">#其中"#"表示任意数字</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="设备号"><a href="#设备号" class="headerlink" title="设备号"></a>设备号</h4><ul>
+<li>major：主设备号，区分设备类型，用于标明设备所需要的驱动程序</li>
+<li>minor：次设备号，区分同种设备类型下的不同设备，是特定设备的访问路口</li>
+</ul>
+<h4 id="mknod命令"><a href="#mknod命令" class="headerlink" title="mknod命令"></a>mknod命令</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#用于创建块或字符设备</span></span><br><span class="line">mknod [OPTION]... NAME TYPE [MAJOR MINOR]</span><br><span class="line">	-m MODE:创建后的设备文件的访问权限</span><br></pre></td></tr></table></figure>
+
+<h4 id="引用方式"><a href="#引用方式" class="headerlink" title="引用方式"></a>引用方式</h4><ul>
+<li>设备文件名</li>
+<li>卷标</li>
+<li>UUID</li>
+</ul>
+<h3 id="磁盘分区"><a href="#磁盘分区" class="headerlink" title="磁盘分区"></a>磁盘分区</h3><h4 id="MBR"><a href="#MBR" class="headerlink" title="MBR"></a>MBR</h4><p>主引导记录，处于0号扇区(每个扇区512B)。</p>
+<h5 id="组成部分"><a href="#组成部分" class="headerlink" title="组成部分"></a>组成部分</h5><ul>
+<li>446B：bootloader程序，是引导启动操作系统的程序</li>
+<li>64B：分区表，每16B标识一个分区，一共只能有4个分区，其中第四个分区使用拓展分区即可超过4个分区的限制</li>
+<li>2B：MBR区域的有效性标识，一般为55AA</li>
+</ul>
+<h4 id="GPT"><a href="#GPT" class="headerlink" title="GPT"></a>GPT</h4><p>待补充</p>
+<h4 id="fdisk命令"><a href="#fdisk命令" class="headerlink" title="fdisk命令"></a>fdisk命令</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#用于管理磁盘分区</span></span><br><span class="line">fdisk [options] device</span><br><span class="line"></span><br><span class="line"><span class="comment">#fdisk /dev/dev_name后将进入交互式管理接口</span></span><br><span class="line"><span class="comment">#交互常用命令</span></span><br><span class="line">	n:创建新分区</span><br><span class="line">	d:删除已有分区</span><br><span class="line">	t:修改分区类型</span><br><span class="line">	l:查看已有id</span><br><span class="line">	w:保存修改到磁盘</span><br><span class="line">	q:不保存直接退出</span><br><span class="line">	m:查看帮助信息</span><br><span class="line">	p:显示现有分区信息</span><br></pre></td></tr></table></figure>
+
+<p>注意：在已经分区且已经挂载其中某个分区的磁盘上创建新的分区，内核可能在创建完成后无法直接识别，使用以下命令解决</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#查看内核分区</span></span><br><span class="line">cat /proc/partitions</span><br><span class="line"></span><br><span class="line"><span class="comment">#通知内核强制重读磁盘分区</span></span><br><span class="line">CentOS 5：partprobe [device]</span><br><span class="line">CentOS 6/7：</span><br><span class="line">	partx -a [device]</span><br><span class="line">	kpartx -af [device]</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="文件系统"><a href="#文件系统" class="headerlink" title="文件系统"></a>文件系统</h3><h4 id="格式化"><a href="#格式化" class="headerlink" title="格式化"></a>格式化</h4><h5 id="低级格式化"><a href="#低级格式化" class="headerlink" title="低级格式化"></a>低级格式化</h5><p>分区之前进行，主要划分磁道</p>
+<h5 id="高级格式化"><a href="#高级格式化" class="headerlink" title="高级格式化"></a>高级格式化</h5><p>分区之后对分区进行，主要是创建文件系统</p>
+<h4 id="元数据"><a href="#元数据" class="headerlink" title="元数据"></a>元数据</h4><p>元数据主要是文件的属性例如大小、权限、时间戳、数据块指针等信息的存放区域(不包括文件名)，一般一个文件的元数据叫做一个inode(index node)索引节点，在创建操作系统时就已经分配了一段区域作为元数据的存储区域。另外，元数据区域包括一个位图，用于标识inode节点的分配情况。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#文件前的编号即为inode编号</span></span><br><span class="line">[root@localhost ~]<span class="comment"># ls -i </span></span><br><span class="line">34214878 anaconda-ks.cfg  34214891 initial-setup-ks.cfg</span><br><span class="line"></span><br><span class="line"><span class="comment">#stat命令查看具体文件的inode信息</span></span><br><span class="line">[root@localhost ~]<span class="comment"># stat ./anaconda-ks.cfg </span></span><br><span class="line">  File: ./anaconda-ks.cfg</span><br><span class="line">  Size: 1467      	Blocks: 8          IO Block: 4096   regular file</span><br><span class="line">Device: fd00h/64768d	Inode: 34214878    Links: 1</span><br><span class="line">Access: (0600/-rw-------)  Uid: (    0/    root)   Gid: (    0/    root)</span><br><span class="line">Context: system_u:object_r:admin_home_t:s0</span><br><span class="line">Access: 2019-12-23 08:02:55.976905697 -0500</span><br><span class="line">Modify: 2019-12-23 07:16:53.042026882 -0500</span><br><span class="line">Change: 2019-12-23 07:16:53.042026882 -0500</span><br><span class="line"> Birth: -</span><br></pre></td></tr></table></figure>
+
+<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><p>目录本身也是文件，他所在的块存贮的是他的一级目录下的文件名和对于的inode映射。因此在每次查找路径时都会先查找/的inode，然后查找/的块，从/的块中的映射查找需要的文件再依次查找下去，直到找到目标文件。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#free查看内存看出cache占用，里面存储的就包含路径的缓存，用于加快查找映射</span></span><br><span class="line">[root@localhost ~]<span class="comment"># free</span></span><br><span class="line">              total        used        free      shared  buff/cache   available</span><br><span class="line">Mem:         817272      522836       91996        1804      202440      140784</span><br><span class="line">Swap:       2097148      216064     1881084</span><br></pre></td></tr></table></figure>
+
+<h4 id="VFS"><a href="#VFS" class="headerlink" title="VFS"></a>VFS</h4><p>虚拟文件系统，是一个中间层，用于将各种文件系统的差异性屏蔽而向上层统一输出一个接口。</p>
+<p>Linux文件系统：ext2~4、xfs、btrfs等</p>
+<p>网络文件系统：nfs、cifs等</p>
+<p>集群文件系统：gfs2、ocfs2等</p>
+<p>内核级分布式文件系统：ceph等</p>
+<p>伪文件系统：proc、sysfs、tmpfs等</p>
+<p>交换文件系统：swap等</p>
+<p>用户空间分布式文件系统：mogiles、moosefs等</p>
+<h4 id="管理工具"><a href="#管理工具" class="headerlink" title="管理工具"></a>管理工具</h4><h5 id="创建文件系统工具"><a href="#创建文件系统工具" class="headerlink" title="创建文件系统工具"></a>创建文件系统工具</h5><p>mkfs：它包括一系列指令，如mkfs.ext2、mkfs.ext3、mkfs.xfs等</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#ext系列专用管理工具</span></span><br><span class="line">mke2fs [option] device</span><br><span class="line">	-t &#123;ext2|3|4&#125;：指明文件系统类型</span><br><span class="line">	-b &#123;1024|2048|4096&#125;：指明文件系统的块大小</span><br><span class="line">	-L LABLE：指明卷标</span><br><span class="line">	-j：创建有日志的文件系统</span><br><span class="line">	-i <span class="comment">#：指明inode的比率，即每多少字节创建一个inode</span></span><br><span class="line">	-N <span class="comment">#：直接指明要给此文件系统创建的inode数量</span></span><br><span class="line">	-O [^]feature：以指定的特性创建文件系统(或取消某种特性)</span><br><span class="line">	-m <span class="comment">#：指定预留空间百分比，直接根数字即可</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="检测及修复文件系统工具"><a href="#检测及修复文件系统工具" class="headerlink" title="检测及修复文件系统工具"></a>检测及修复文件系统工具</h5><p>fsck：它包括一系列指令，如fsck.ext2、fsck.ext3、fsck.xfs等</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#e2fsck用于检查ext系列文件系统</span></span><br><span class="line">e2fsck [option] device</span><br><span class="line">	-y：对所有问题自动回复yes</span><br><span class="line">	-f：即使文件系统clean也要强制检测</span><br><span class="line">	</span><br><span class="line"><span class="comment">#fsck用于通用的linux文件系统检查</span></span><br><span class="line">fsck</span><br><span class="line">	-t <span class="built_in">type</span>：指明文件系统类型</span><br><span class="line">	-a：无须交互而自动修复所有错误</span><br><span class="line">	-r：交互式修复(推荐)</span><br></pre></td></tr></table></figure>
+
+<h5 id="查看管理属性工具"><a href="#查看管理属性工具" class="headerlink" title="查看管理属性工具"></a>查看管理属性工具</h5><p>dumpe2fs、tune2fs、blkid、e2label</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#e2label用于查看与设置ext系列的卷标</span></span><br><span class="line">e2label device</span><br><span class="line">e2label device LABEL</span><br><span class="line"></span><br><span class="line"><span class="comment">#blkid打印块属性</span></span><br><span class="line">blkid [option] device</span><br><span class="line">	-L LABEL；根据LABEL定位设备</span><br><span class="line">	-U UUID：根据UUID定位设备</span><br><span class="line">	</span><br><span class="line"><span class="comment">#tune2fs用于调整ext系列系统中可调整的参数，例如卷标和系统类型等</span></span><br><span class="line">tune2fs [option] device</span><br><span class="line">	-l：查看超级块信息</span><br><span class="line">	-j：将ext2升级为ext3</span><br><span class="line">	-L LABEL：修改卷标</span><br><span class="line">	-m <span class="comment">#：修改预留空间百分比，直接跟数字即可</span></span><br><span class="line">	-O [^]feature：开启或关闭某种特性</span><br><span class="line">	-o [^]mount_option：开启或关闭某种默认挂载选项，常用设置acl</span><br><span class="line">	</span><br><span class="line"><span class="comment">#dumpe2fs用于显示文件系统属性信息，包括每个块组和超级块信息</span></span><br><span class="line">dumpe2fs [option] device</span><br><span class="line"></span><br><span class="line"><span class="comment">#修改ext系列文件系统的大小，主要用于扩展lv后扩展文件系统使用</span></span><br><span class="line">resize2fs lvname</span><br></pre></td></tr></table></figure>
+
+<h4 id="日志"><a href="#日志" class="headerlink" title="日志"></a>日志</h4><p>主要是解决当写文件发生错误导致系统重启后恢复哪些文件而设置的机制。在磁盘上会单独分一块日志区，写文件时先写在日志区，然后再写回文件系统中。虽然会有性能损失，但是利大于弊。</p>
+<h4 id="文件操作"><a href="#文件操作" class="headerlink" title="文件操作"></a>文件操作</h4><h5 id="删除文件"><a href="#删除文件" class="headerlink" title="删除文件"></a>删除文件</h5><p>将此文件指向的所有数据块标记为未使用状态并将此文件的inode标记为未使用，即只修改inode位图和数据块位图即可，因此速度很快。</p>
+<h5 id="移动文件"><a href="#移动文件" class="headerlink" title="移动文件"></a>移动文件</h5><p>当处于同一文件系统时，移动文件仅仅是改变其路径。即将当前目录的条目移到另一目录即可，文件本身并不做改变。</p>
+<p>当处于不同文件系统时，移动文件相当于复制数据至目标文件并删除源文件，因此比较慢。</p>
+<h4 id="链接文件"><a href="#链接文件" class="headerlink" title="链接文件"></a>链接文件</h4><h5 id="硬链接"><a href="#硬链接" class="headerlink" title="硬链接"></a>硬链接</h5><p>指向同一inode的不同路径</p>
+<p>其中目录不支持硬链接；硬链接不能跨文件系统；创建硬链接会增加inode引用计数；硬链接大小相同</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#硬链接inode相同</span></span><br><span class="line">[root@localhost ~]<span class="comment"># ls -i</span></span><br><span class="line">34214878 anaconda-ks.cfg      34214891 initial-setup-ks.cfg</span><br><span class="line">34214878 anaconda-ks.cfg_bak  34214894 <span class="built_in">test</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#第二列的“1”就是引用计数</span></span><br><span class="line">[root@localhost ~]<span class="comment"># ls -l</span></span><br><span class="line">total 8</span><br><span class="line">-rw-------. 1 root root 1467 Dec 23 07:16 anaconda-ks.cfg</span><br><span class="line">-rw-r--r--. 1 root root 1622 Dec 23 08:03 initial-setup-ks.cfg</span><br><span class="line"></span><br><span class="line"><span class="comment">#创建一个硬链接，可以看到引用计数加1</span></span><br><span class="line"><span class="comment">#删除一个硬链接不影响另一个</span></span><br><span class="line">[root@localhost ~]<span class="comment"># ln anaconda-ks.cfg anaconda-ks.cfg_bak</span></span><br><span class="line">[root@localhost ~]<span class="comment"># ls -l</span></span><br><span class="line">total 12</span><br><span class="line">-rw-------. 2 root root 1467 Dec 23 07:16 anaconda-ks.cfg</span><br><span class="line">-rw-------. 2 root root 1467 Dec 23 07:16 anaconda-ks.cfg_bak</span><br><span class="line">-rw-r--r--. 1 root root 1622 Dec 23 08:03 initial-setup-ks.cfg</span><br><span class="line"></span><br><span class="line"><span class="comment">#不能链接目录</span></span><br><span class="line">[root@localhost ~]<span class="comment"># ln test test_1</span></span><br><span class="line">ln: <span class="built_in">test</span>: hard link not allowed <span class="keyword">for</span> directory</span><br></pre></td></tr></table></figure>
+
+<h5 id="符号链接"><a href="#符号链接" class="headerlink" title="符号链接"></a>符号链接</h5><p>inode数据保存的指针区域保存的不是指向磁盘块的指针，而是指向那个真正文件的路径</p>
+<p>其中，符号链接和文件是两个独立的文件，他们有各自的inode；可以对目录进行符号链接，且可以跨文件系统；删除符号链接不影响源文件，但是删除源文件影响符号链接；符号链接大小为路径字符串长度。</p>
+<p>符号链接本身权限是777，因为用户对符号链接的访问本质还是要看源文件的权限。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#可以看到符号链接的文件inode与硬链接和源文件不同</span></span><br><span class="line"><span class="comment">#且源文件和符号链接的引用计数也不同，源文件引用计数不变</span></span><br><span class="line">[root@localhost ~]<span class="comment"># ln -s anaconda-ks.cfg anaconda-ks.cfg_symbolic</span></span><br><span class="line">[root@localhost ~]<span class="comment"># ls -li</span></span><br><span class="line">total 12</span><br><span class="line">34214878 -rw-------. 2 root root 1467 Dec 23 07:16 anaconda-ks.cfg</span><br><span class="line">34214878 -rw-------. 2 root root 1467 Dec 23 07:16 anaconda-ks.cfg_bak</span><br><span class="line">34214895 lrwxrwxrwx. 1 root root   15 Jan  1 06:15 anaconda-ks.cfg_symbolic -&gt; anaconda-ks.cfg</span><br><span class="line">34214891 -rw-r--r--. 1 root root 1622 Dec 23 08:03 initial-setup-ks.cfg</span><br><span class="line">34214894 drwxr-xr-x. 2 root root    6 Jan  1 06:09 <span class="built_in">test</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#可以对目录进行符号链接</span></span><br><span class="line">[root@localhost ~]<span class="comment"># ln -s test test_symbolic</span></span><br><span class="line">[root@localhost ~]<span class="comment"># ls -li test*</span></span><br><span class="line">34214899 lrwxrwxrwx. 1 root root 4 Jan  1 06:17 test_symbolic -&gt; <span class="built_in">test</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">test</span>:</span><br><span class="line">total 0</span><br></pre></td></tr></table></figure>
+
+<h4 id="swap交换分区"><a href="#swap交换分区" class="headerlink" title="swap交换分区"></a>swap交换分区</h4><p>Linux上的交换分区必须使用独立的文件系统，且文件系统的system_ID必须为82</p>
+<h5 id="创建swap分区"><a href="#创建swap分区" class="headerlink" title="创建swap分区"></a>创建swap分区</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mkswap [option] device</span><br><span class="line">	-L：指明卷标</span><br><span class="line">	-f：强制创建</span><br></pre></td></tr></table></figure>
+
+<h5 id="启用swap"><a href="#启用swap" class="headerlink" title="启用swap"></a>启用swap</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">swapon [option] device</span><br><span class="line">	-a：启用定义在/etc/fstab文件中的所有swap设备</span><br></pre></td></tr></table></figure>
+
+<h5 id="禁用swap"><a href="#禁用swap" class="headerlink" title="禁用swap"></a>禁用swap</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">swapoff device</span><br></pre></td></tr></table></figure>
+
+<h4 id="挂载"><a href="#挂载" class="headerlink" title="挂载"></a>挂载</h4><p>根文件系统以外的其他文件系统想要被访问就必须先关联到根文件系统上的某个目录来实现，这个关联操作称为“挂载”，挂载目录成为”挂载点“，即用于另一个文件系统的访问入口。</p>
+<p>此外，挂载点必须实现存在；应该使用不会被或未被其他进程使用的目录；挂载点下原有的文件会被隐藏</p>
+<h5 id="mount使用"><a href="#mount使用" class="headerlink" title="mount使用"></a>mount使用</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#mount实现挂载</span></span><br><span class="line">mount [-fnrsvw] [-t fstype] [-o options] device dir</span><br><span class="line">	-a：自动挂载</span><br><span class="line">	-r：只读挂载</span><br><span class="line">	-w：读写挂载</span><br><span class="line">	-n：默认情况下，挂载卸载会同步更新到/etc/mtab中，该选项用于禁止该功能</span><br><span class="line">	-t：指明挂载文件系统类型，可省略，默认通过blkid识别</span><br><span class="line">	-L LABEL：挂载时以卷标的方式指明设备</span><br><span class="line">	-U UUID：挂载时以UUID方式指明设</span><br><span class="line">	-o options挂载选项</span><br><span class="line">		sync/async：同步/异步操作</span><br><span class="line">		atime/noatime：文件在被访问时是否更新其访问时间戳，不启用更好</span><br><span class="line">		diratime/nodiratime：同上，对目录操作</span><br><span class="line">		remount：重新挂载，不用卸载再挂载</span><br><span class="line">		acl：支持使用facl</span><br><span class="line">		ro：只读类似-r</span><br><span class="line">		rw：读写类似-w</span><br><span class="line">		dev/nodev：此设备上是否允许创建设备文件</span><br><span class="line">		<span class="built_in">exec</span>/noexec：是否允许运行此设备上的程序文件</span><br><span class="line">		auto/noauto：是否允许自动挂载</span><br><span class="line">		user/nouser：是否允许普通用户挂载</span><br><span class="line">		suid/nosuid：是否允许suid和sgid特殊权限生效</span><br><span class="line">		defaults：rw, suid, dev, <span class="built_in">exec</span>, auto, nouser, and async</span><br><span class="line">	--<span class="built_in">bind</span> 源目录 目标目录：实现目录的绑定，用作某目录临时入口	</span><br><span class="line">		</span><br><span class="line"><span class="comment">#查看当前已挂载设备</span></span><br><span class="line">mount</span><br><span class="line">cat /etc/mtab</span><br><span class="line">cat /proc/mounts</span><br><span class="line"></span><br><span class="line"><span class="comment">#挂载光盘</span></span><br><span class="line">mount -r /dev/cdrom mount_point</span><br><span class="line"></span><br><span class="line"><span class="comment">#挂载本地回环设备(iso等映像)</span></span><br><span class="line">mount -o loop 回环设备 mount_point</span><br></pre></td></tr></table></figure>
+
+<h5 id="umount使用"><a href="#umount使用" class="headerlink" title="umount使用"></a>umount使用</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#umount实现卸载</span></span><br><span class="line">umount [-dflnrv] &#123;directory|device&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">#正在被访问时无法卸载,查看被谁访问使用</span></span><br><span class="line">lsof mount_point</span><br><span class="line">fuser -v mount_point</span><br><span class="line"></span><br><span class="line"><span class="comment">#终止所有访问挂载点的进程</span></span><br><span class="line">fuser -km mount_point</span><br></pre></td></tr></table></figure>
+
+<h5 id="fstab"><a href="#fstab" class="headerlink" title="fstab"></a>fstab</h5><p>用于定义开机自动挂载的目录。其每行定义一个要挂载的文件系统及其相关属性</p>
+<p>属性从左自右分别为：挂载设备、挂载点、文件系统类型、挂载选项、转储频率、自检次序</p>
+<p>挂载设备：LAEBL、UUID、伪文件系统均可</p>
+<p>挂载选项：defaults表示默认选项，若自定义多个选项，则每个选项之间使用”，“分隔</p>
+<p>转储频率：0表示不备份；1表示每天备份、2表示每隔一天备份</p>
+<p>自检次序：0表示不自检；1表示首先自检，通常为根文件系统；2.3.4….依次自检</p>
+<h4 id="其余命令"><a href="#其余命令" class="headerlink" title="其余命令"></a>其余命令</h4><h5 id="df"><a href="#df" class="headerlink" title="df"></a>df</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#显示文件系统使用情况</span></span><br><span class="line">df [option]</span><br><span class="line">	-l：仅显示本地文件的相关信息</span><br><span class="line">	-h：以人可读的形式显示，即单位换算</span><br><span class="line">	-i：显示inode使用状态</span><br></pre></td></tr></table></figure>
+
+<h5 id="du"><a href="#du" class="headerlink" title="du"></a>du</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#显示文件使用情况而非文件系统</span></span><br><span class="line">du [option] file</span><br><span class="line">	-h：以人可读的形式显示，即单位换算</span><br><span class="line">	-s：显示目录下所有文件的大小总和</span><br></pre></td></tr></table></figure>
+
+<h5 id="dd"><a href="#dd" class="headerlink" title="dd"></a>dd</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#底层的复制工具</span></span><br><span class="line"><span class="comment">#表示从path1复制文件到path2</span></span><br><span class="line">dd <span class="keyword">if</span>=/path1 of=/path2</span><br><span class="line">	bs=<span class="comment">#：表示复制单元大小</span></span><br><span class="line">	count=<span class="comment">#：表示复制多少个bs</span></span><br><span class="line">	</span><br><span class="line"><span class="comment">#备份MBR</span></span><br><span class="line">dd <span class="keyword">if</span>=/dev/sda of=/tmp/mbr.bck bs=512 count=1</span><br><span class="line"><span class="comment">#破坏MBR的bootloader</span></span><br><span class="line">dd <span class="keyword">if</span>=/dev/zero of=/dev/sda bs=256 count=1</span><br><span class="line"></span><br><span class="line"><span class="comment">#特殊设备</span></span><br><span class="line">/dev/null</span><br><span class="line">/dev/zero</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%A3%81%E7%9B%98%E7%AE%A1%E7%90%86/" rel="tag"># 磁盘管理</a>
+              <a href="/tags/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/" rel="tag"># 文件系统</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/02/LVM2/" rel="prev" title="LVM2">
+      <i class="fa fa-chevron-left"></i> LVM2
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/01/02/%E5%8E%8B%E7%BC%A9%E4%B8%8E%E5%BD%92%E6%A1%A3/" rel="next" title="压缩与归档">
+      压缩与归档 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#设备类型"><span class="nav-number">1.</span> <span class="nav-text">设备类型</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#块"><span class="nav-number">1.1.</span> <span class="nav-text">块</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#字符"><span class="nav-number">1.2.</span> <span class="nav-text">字符</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#设备文件"><span class="nav-number">2.</span> <span class="nav-text">设备文件</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命名"><span class="nav-number">2.1.</span> <span class="nav-text">命名</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#设备号"><span class="nav-number">2.2.</span> <span class="nav-text">设备号</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#mknod命令"><span class="nav-number">2.3.</span> <span class="nav-text">mknod命令</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#引用方式"><span class="nav-number">2.4.</span> <span class="nav-text">引用方式</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#磁盘分区"><span class="nav-number">3.</span> <span class="nav-text">磁盘分区</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#MBR"><span class="nav-number">3.1.</span> <span class="nav-text">MBR</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#组成部分"><span class="nav-number">3.1.1.</span> <span class="nav-text">组成部分</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#GPT"><span class="nav-number">3.2.</span> <span class="nav-text">GPT</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#fdisk命令"><span class="nav-number">3.3.</span> <span class="nav-text">fdisk命令</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件系统"><span class="nav-number">4.</span> <span class="nav-text">文件系统</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#格式化"><span class="nav-number">4.1.</span> <span class="nav-text">格式化</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#低级格式化"><span class="nav-number">4.1.1.</span> <span class="nav-text">低级格式化</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#高级格式化"><span class="nav-number">4.1.2.</span> <span class="nav-text">高级格式化</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#元数据"><span class="nav-number">4.2.</span> <span class="nav-text">元数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#目录"><span class="nav-number">4.3.</span> <span class="nav-text">目录</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#VFS"><span class="nav-number">4.4.</span> <span class="nav-text">VFS</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#管理工具"><span class="nav-number">4.5.</span> <span class="nav-text">管理工具</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#创建文件系统工具"><span class="nav-number">4.5.1.</span> <span class="nav-text">创建文件系统工具</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#检测及修复文件系统工具"><span class="nav-number">4.5.2.</span> <span class="nav-text">检测及修复文件系统工具</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#查看管理属性工具"><span class="nav-number">4.5.3.</span> <span class="nav-text">查看管理属性工具</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#日志"><span class="nav-number">4.6.</span> <span class="nav-text">日志</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#文件操作"><span class="nav-number">4.7.</span> <span class="nav-text">文件操作</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#删除文件"><span class="nav-number">4.7.1.</span> <span class="nav-text">删除文件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#移动文件"><span class="nav-number">4.7.2.</span> <span class="nav-text">移动文件</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#链接文件"><span class="nav-number">4.8.</span> <span class="nav-text">链接文件</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#硬链接"><span class="nav-number">4.8.1.</span> <span class="nav-text">硬链接</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#符号链接"><span class="nav-number">4.8.2.</span> <span class="nav-text">符号链接</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#swap交换分区"><span class="nav-number">4.9.</span> <span class="nav-text">swap交换分区</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#创建swap分区"><span class="nav-number">4.9.1.</span> <span class="nav-text">创建swap分区</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#启用swap"><span class="nav-number">4.9.2.</span> <span class="nav-text">启用swap</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#禁用swap"><span class="nav-number">4.9.3.</span> <span class="nav-text">禁用swap</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#挂载"><span class="nav-number">4.10.</span> <span class="nav-text">挂载</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#mount使用"><span class="nav-number">4.10.1.</span> <span class="nav-text">mount使用</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#umount使用"><span class="nav-number">4.10.2.</span> <span class="nav-text">umount使用</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#fstab"><span class="nav-number">4.10.3.</span> <span class="nav-text">fstab</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#其余命令"><span class="nav-number">4.11.</span> <span class="nav-text">其余命令</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#df"><span class="nav-number">4.11.1.</span> <span class="nav-text">df</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#du"><span class="nav-number">4.11.2.</span> <span class="nav-text">du</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#dd"><span class="nav-number">4.11.3.</span> <span class="nav-text">dd</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">15</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
