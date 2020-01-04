@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="ifcfg系列ifconfig接口及地址查看和管理">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux网络属性配置">
+<meta property="og:url" content="http://yoursite.com/2020/01/04/Linux%E7%BD%91%E7%BB%9C%E5%B1%9E%E6%80%A7%E9%85%8D%E7%BD%AE/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="ifcfg系列ifconfig接口及地址查看和管理">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-04T12:03:23.000Z">
+<meta property="article:modified_time" content="2020-01-04T12:04:36.753Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="网络配置">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/04/Linux%E7%BD%91%E7%BB%9C%E5%B1%9E%E6%80%A7%E9%85%8D%E7%BD%AE/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Linux网络属性配置 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">20</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">2</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">18</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/04/Linux%E7%BD%91%E7%BB%9C%E5%B1%9E%E6%80%A7%E9%85%8D%E7%BD%AE/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Linux网络属性配置
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-04 20:03:23 / 修改时间：20:04:36" itemprop="dateCreated datePublished" datetime="2020-01-04T20:03:23+08:00">2020-01-04</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="ifcfg系列"><a href="#ifcfg系列" class="headerlink" title="ifcfg系列"></a>ifcfg系列</h3><h4 id="ifconfig"><a href="#ifconfig" class="headerlink" title="ifconfig"></a>ifconfig</h4><p>接口及地址查看和管理</p>
+<a id="more"></a>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ifconfig [interface]</span><br><span class="line">	-a：显示所有接口，包括非激活状态</span><br><span class="line"></span><br><span class="line">ifconfig INTERFACE [aftype] option | address...</span><br><span class="line"><span class="comment">#启用网卡,其中大写的需要替换成具体接口名以及ip地址、子网掩码等信息</span></span><br><span class="line">ifconfig INTERFACE_NAME IP/MASK [up]</span><br><span class="line">ifconfig INTERFACE_NAME netmask NETMASK</span><br></pre></td></tr></table></figure>
+
+<h4 id="route"><a href="#route" class="headerlink" title="route"></a>route</h4><p>路由查看和管理</p>
+<h5 id="查看"><a href="#查看" class="headerlink" title="查看"></a>查看</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">route [option]</span><br><span class="line">	-n：直接显示数字信息，不进行主机名解析，效率比较高</span><br></pre></td></tr></table></figure>
+
+<h5 id="添加"><a href="#添加" class="headerlink" title="添加"></a>添加</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">route add [-net|-host] target [netmask Nm] [gw GW] [dev]</span><br><span class="line"><span class="comment">#实例</span></span><br><span class="line"><span class="comment">#添加条目，经由192.168.10.1访问10.10.10.0网络</span></span><br><span class="line">route add -net 10.10.10.0/8 gw 192.168.10.1</span><br><span class="line"><span class="comment">#添加默认网关</span></span><br><span class="line">route add -net 0.0.0.0/0.0.0.0 gw 192.168.10.1</span><br></pre></td></tr></table></figure>
+
+<h5 id="删除"><a href="#删除" class="headerlink" title="删除"></a>删除</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">route del [-net|-host] target [gw GW] [dev]</span><br><span class="line"><span class="comment">#实例</span></span><br><span class="line"><span class="comment">#删除上面创建的条目</span></span><br><span class="line">route del -net 10.10.10.0/8 gw 192.168.10.1</span><br><span class="line"><span class="comment">#删除默认网关</span></span><br><span class="line">route del default</span><br></pre></td></tr></table></figure>
+
+<h4 id="netstat"><a href="#netstat" class="headerlink" title="netstat"></a>netstat</h4><p>网络连接、路由表、接口信息等网络信息查看</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#显示路由表</span></span><br><span class="line">netstat -rn</span><br><span class="line">	-r：路由表</span><br><span class="line">	-n：数字格式</span><br><span class="line"><span class="comment">#显示网络连接</span></span><br><span class="line">netstat [option]</span><br><span class="line">	-t：tcp相关连接</span><br><span class="line">	-u：UDP相关连接</span><br><span class="line">	-w：raw socket相关连接</span><br><span class="line">	-l：处于监听状态的连接</span><br><span class="line">	-a：所有状态</span><br><span class="line">	-n：以数字格式显示</span><br><span class="line">	-e：扩展格式</span><br><span class="line">	-p：显示相关进程pid	</span><br><span class="line">	-i：显示接口信息</span><br><span class="line"><span class="comment">#常用组合</span></span><br><span class="line">	-tan、-uan、-tnl、-unl、-tnlp</span><br></pre></td></tr></table></figure>
+
+<h4 id="ifup-ifdown"><a href="#ifup-ifdown" class="headerlink" title="ifup/ifdown"></a>ifup/ifdown</h4><p>通过读取/etc/sysconfig/network-scripts/下网卡的配置文件进行网卡的开启和禁用</p>
+<h3 id="hostnamectl"><a href="#hostnamectl" class="headerlink" title="hostnamectl"></a>hostnamectl</h3><p>配置主机名</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">hostnamectl</span><br><span class="line">	status：显示当前主机名设定</span><br><span class="line">	<span class="built_in">set</span>-hostname NAME：设定主机名，永久有效</span><br><span class="line"><span class="comment">#centos6中需要修改/etc/sysconfig/network来修改主机名才能永久有效</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="DNS配置"><a href="#DNS配置" class="headerlink" title="DNS配置"></a>DNS配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#在配置文件/etc/resolov.conf中修改即可，最多可以同时添加3个</span></span><br><span class="line"><span class="comment">#nameserver为关键字，后面ip地址只能以数字形式，不能使用域名</span></span><br><span class="line">nameserver 192.168.163.2</span><br><span class="line"><span class="comment">#注意/etc/hosts优先于dns配置文件，如果本地有host，那么host内的设置优先</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="iproute2系列"><a href="#iproute2系列" class="headerlink" title="iproute2系列"></a>iproute2系列</h3><h4 id="ip"><a href="#ip" class="headerlink" title="ip"></a>ip</h4><p>查看和管理路由、设备、策略路由以及隧道等信息，主要用来逐渐取代ifcfg系列。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">ip [option] OBJECT &#123;COMMAND|<span class="built_in">help</span>&#125;</span><br><span class="line">	link：网络设备配置</span><br><span class="line">		show/list：显示设备的属性</span><br><span class="line">		<span class="built_in">set</span>：设置设备的属性</span><br><span class="line">			dev NAME：指明要管理的设备</span><br><span class="line">			up/down：启用和关闭设备</span><br><span class="line">			multicast on/off：启用关闭多播</span><br><span class="line">			name NAME：重命名网络接口</span><br><span class="line">			mtu NUMBER：设置MTU大小，默认1500</span><br><span class="line">			netns NAME：ns为命名空间，用于将指定接口移到某个netns中，常用于构建虚拟网络</span><br><span class="line">		<span class="built_in">help</span>：显示简要帮助</span><br><span class="line">	netns：管理网络命名空间</span><br><span class="line">		add NAME：增加一个网络命名空间</span><br><span class="line">		del NAME：删除一个网络命名空间</span><br><span class="line">		list：列出所有的netns</span><br><span class="line">		<span class="built_in">exec</span> NAME COMMAND：在netns中执行COMMAND命令</span><br><span class="line">	addr：管理网络接口的ip地址</span><br><span class="line">		add IP dev INTERFACE：指定接口增加IP地址</span><br><span class="line">			label NAME：为指定接口添加接口别名。用于解决ifconig命令不显示多个地址的问题</span><br><span class="line">			broadcast ADDRESS：广播地址，一般自动获得</span><br><span class="line">			scope SCOPE_VALUE：指定接口作用范围</span><br><span class="line">				global：全局可用</span><br><span class="line">				link：接口可用</span><br><span class="line">				host：仅本机可用</span><br><span class="line">		delete IP dev INTERFACE：删除指定设备的地址</span><br><span class="line">		show：显示地址信息</span><br><span class="line">		flush dev INTERFACE：清空指定接口地址</span><br><span class="line">	route：路由管理</span><br><span class="line">		add 目标网络/掩码长度 via GW dev 设备 [src]：添加路由</span><br><span class="line">		change：同上</span><br><span class="line">		repalce：同上</span><br><span class="line">		delete 网络：删除到指定网络的路由</span><br><span class="line">		show：显示路由信息</span><br><span class="line">		get 目标网络：获取某单个路由信息</span><br><span class="line">		flush：清空路由信息</span><br></pre></td></tr></table></figure>
+
+<h4 id="ss"><a href="#ss" class="headerlink" title="ss"></a>ss</h4><p>用来取代netstat的命令</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">ss [option] [filter]</span><br><span class="line">	-t：tcp相关连接</span><br><span class="line">	-u：UDP相关连接</span><br><span class="line">	-w：raw socket相关连接</span><br><span class="line">	-l：处于监听状态的连接</span><br><span class="line">	-a：所有状态</span><br><span class="line">	-n：以数字格式显示</span><br><span class="line">	-e：扩展格式</span><br><span class="line">	-p：显示相关进程pid	</span><br><span class="line">	-i：显示接口信息</span><br><span class="line">	-m：显示内存用量</span><br><span class="line">	-o：显示计时器信息</span><br><span class="line">	[fileter]</span><br><span class="line">	state [TCP-STATE] [EXPRESSION]</span><br><span class="line"><span class="comment">#实例</span></span><br><span class="line"><span class="comment">#过滤出目标端口和源端口均为22的信息</span></span><br><span class="line">ss -tan <span class="string">'( dport = :22 or sport = :22 )'</span></span><br><span class="line"><span class="comment">#过滤出TCP状态为ESTABLISHED的连接</span></span><br><span class="line">ss -tan state ESTABLISHED</span><br><span class="line"><span class="comment">#常见TCP状态：LISTEN,ESTABLISHED,FIN_WAIT_1,FIN_WAIT_@,SYN_SENT,SYN_RECV,CLOSED</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h3><h5 id="ip-1"><a href="#ip-1" class="headerlink" title="ip"></a>ip</h5><p>上述命令修改的信息都是临时有效，若想重启后仍然有效需要修改配置文件。配置文件一般放在/etc/sysconfig/network-scripts/目录下。</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DEVICE</td>
+<td>此配置文件的设备名</td>
+</tr>
+<tr>
+<td>ONBOOT</td>
+<td>开机时是否激活</td>
+</tr>
+<tr>
+<td>UUID</td>
+<td>设备唯一标识</td>
+</tr>
+<tr>
+<td>IPV6INIT</td>
+<td>是否初始化IPV6</td>
+</tr>
+<tr>
+<td>BOOTPROTO</td>
+<td>激活此接口时使用什么协议配置接口属性，常用dhcp、static</td>
+</tr>
+<tr>
+<td>TYPE</td>
+<td>接口类型</td>
+</tr>
+<tr>
+<td>DNS1</td>
+<td>定义第一DNS服务器指向</td>
+</tr>
+<tr>
+<td>DNS2</td>
+<td>定义备用DNS服务器指向</td>
+</tr>
+<tr>
+<td>DOMAIN</td>
+<td>DNS搜索域</td>
+</tr>
+<tr>
+<td>GATEWAY</td>
+<td>网关</td>
+</tr>
+<tr>
+<td>IPADDR</td>
+<td>ip地址，静态是要填写</td>
+</tr>
+<tr>
+<td>NETMASIK/PREFIX</td>
+<td>以长度方式指明子网掩码</td>
+</tr>
+<tr>
+<td>USERCTL</td>
+<td>是否允许普通用户控制此设备</td>
+</tr>
+<tr>
+<td>PEERDNS</td>
+<td>是否允许dhcp的dns指向覆盖本地的dns</td>
+</tr>
+<tr>
+<td>NM_CONTROLLED</td>
+<td>是否使用nm工具</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#centos6</span></span><br><span class="line">service SERVICE_NAME &#123;start|stop|statues|restart&#125;</span><br><span class="line"><span class="comment">#centos7/8</span></span><br><span class="line">systemctl &#123;start|stop|statues|restart&#125; SERVICE_NAME</span><br><span class="line">nmcli SERVICE_NAME &#123;start|stop|statues|restart&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="route-1"><a href="#route-1" class="headerlink" title="route"></a>route</h5><p>配置文件放在/etc/sysconfig/network-scripts/route-INTERFACE，有两种配置方式，不可混用。</p>
+<ul>
+<li>每行一个路由条目</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">TARGET via GW</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>每三行一个路由条目</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ADDRESS#&#x3D;TARGET</span><br><span class="line">NETMASK#&#x3D;MASK</span><br><span class="line">GATEWAY#&#x3D;NEXTHOP</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE/" rel="tag"># 网络配置</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/03/IF%E5%B8%B8%E8%A7%81%E6%A3%80%E6%B5%8B%E9%80%89%E9%A1%B9%E8%A1%A5%E5%85%85/" rel="prev" title="IF常见检测选项补充">
+      <i class="fa fa-chevron-left"></i> IF常见检测选项补充
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#ifcfg系列"><span class="nav-number">1.</span> <span class="nav-text">ifcfg系列</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ifconfig"><span class="nav-number">1.1.</span> <span class="nav-text">ifconfig</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#route"><span class="nav-number">1.2.</span> <span class="nav-text">route</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#查看"><span class="nav-number">1.2.1.</span> <span class="nav-text">查看</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#添加"><span class="nav-number">1.2.2.</span> <span class="nav-text">添加</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#删除"><span class="nav-number">1.2.3.</span> <span class="nav-text">删除</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#netstat"><span class="nav-number">1.3.</span> <span class="nav-text">netstat</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ifup-ifdown"><span class="nav-number">1.4.</span> <span class="nav-text">ifup&#x2F;ifdown</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#hostnamectl"><span class="nav-number">2.</span> <span class="nav-text">hostnamectl</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DNS配置"><span class="nav-number">3.</span> <span class="nav-text">DNS配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#iproute2系列"><span class="nav-number">4.</span> <span class="nav-text">iproute2系列</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ip"><span class="nav-number">4.1.</span> <span class="nav-text">ip</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ss"><span class="nav-number">4.2.</span> <span class="nav-text">ss</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置文件"><span class="nav-number">5.</span> <span class="nav-text">配置文件</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#ip-1"><span class="nav-number">5.0.1.</span> <span class="nav-text">ip</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#route-1"><span class="nav-number">5.0.2.</span> <span class="nav-text">route</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
