@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="内核特点 支持模块化。各模块以.ko结尾(kernel object) 支持模块运行时动态装载或卸载 单内核设计，却借鉴了微内核模块化机制的特点">
+<meta property="og:type" content="article">
+<meta property="og:title" content="内核管理">
+<meta property="og:url" content="http://yoursite.com/2020/01/06/%E5%86%85%E6%A0%B8%E7%AE%A1%E7%90%86/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="内核特点 支持模块化。各模块以.ko结尾(kernel object) 支持模块运行时动态装载或卸载 单内核设计，却借鉴了微内核模块化机制的特点">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-06T13:11:17.000Z">
+<meta property="article:modified_time" content="2020-01-06T13:13:40.989Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="内核管理">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/06/%E5%86%85%E6%A0%B8%E7%AE%A1%E7%90%86/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>内核管理 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">27</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">2</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">23</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/06/%E5%86%85%E6%A0%B8%E7%AE%A1%E7%90%86/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          内核管理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-06 21:11:17 / 修改时间：21:13:40" itemprop="dateCreated datePublished" datetime="2020-01-06T21:11:17+08:00">2020-01-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="内核特点"><a href="#内核特点" class="headerlink" title="内核特点"></a>内核特点</h3><ul>
+<li>支持模块化。各模块以.ko结尾(kernel object)</li>
+<li>支持模块运行时动态装载或卸载</li>
+<li>单内核设计，却借鉴了微内核模块化机制的特点</li>
+</ul>
+<a id="more"></a>
+
+<h3 id="组成部分"><a href="#组成部分" class="headerlink" title="组成部分"></a>组成部分</h3><h4 id="核心文件"><a href="#核心文件" class="headerlink" title="核心文件"></a>核心文件</h4><p>保存在/boot/下，名称为vmlinuz-VERSION-release</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">ls /boot/</span><br><span class="line">config-4.18.0-80.el8.x86_64</span><br><span class="line">efi</span><br><span class="line">grub2</span><br><span class="line">initramfs-0-rescue-75fbe50f6f2b4dbfae8dc77fbbd4d906.img</span><br><span class="line">initramfs-4.18.0-80.el8.x86_64.img</span><br><span class="line">initramfs-4.18.0-80.el8.x86_64kdump.img</span><br><span class="line">loader</span><br><span class="line">lost+found</span><br><span class="line">System.map-4.18.0-80.el8.x86_64</span><br><span class="line">vmlinuz-0-rescue-75fbe50f6f2b4dbfae8dc77fbbd4d906</span><br><span class="line">vmlinuz-4.18.0-80.el8.x86_64</span><br></pre></td></tr></table></figure>
+
+<h4 id="模块文件"><a href="#模块文件" class="headerlink" title="模块文件"></a>模块文件</h4><p>保存在/lib/modules/下，名称为VERSION-release</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#</span></span><br><span class="line">ls /lib/modules/</span><br><span class="line">4.18.0-79.el8+2.x86_64  4.18.0-80.el8.x86_64</span><br></pre></td></tr></table></figure>
+
+<h4 id="ramdisk"><a href="#ramdisk" class="headerlink" title="ramdisk"></a>ramdisk</h4><p>内核的辅助性文件，本质是一个简装本的根文件系统，不是必须的文件，如果内核能直接驱动rootfs那么就不需要此文件。它可以加载目标设备驱动、逻辑设备驱动、文件系统驱动</p>
+<p>存放在/boot/目录下叫做initramfs-VERSION.img</p>
+<p>在centos6上叫做initrd，在centos7上叫做initramfs，可以通过dracut工具创建。</p>
+<p>基于内存的磁盘设备，在内存区域模拟一个硬盘空间。当系统启动时，内核需要加载根文件系统，而根文件系统放在磁盘上，那么内核需要有该磁盘的相应驱动程序才可以读磁盘从而获取根文件系统，但是驱动程序都保存在文件系统中，这就成了一个死循环。因此设置了一个ramdisk，作为一个临时根文件系统，他是在安装操作系统时通过扫描本地磁盘接口从而获取相应的驱动程序放在内存中即ramdisk中，那么当内核需要读取根文件系统时就可以先把ramdisk当作根，然后通过其内的驱动来读取磁盘中的根文件系统，此时再把ramdisk的根切换到真正的根文件系统中，这样就完成了内核加载根的过程。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#自行创建initrd.img</span></span><br><span class="line">dracut [option] initrd-image kernel-name</span><br><span class="line">	--with=&lt;module&gt;：需要额外装载的模块</span><br><span class="line"><span class="comment">#例如</span></span><br><span class="line">dracut /boot/initramfs-$(uname -r).img $(uname -r)</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="重要内核参数"><a href="#重要内核参数" class="headerlink" title="重要内核参数"></a>重要内核参数</h3><p>net.ipv4.ip_forward：核心转发(即同主机不同网卡之间的转发)</p>
+<p>vm.drop_caches：缓存丢弃，即关闭缓存</p>
+<p>kernel.hostname：主机名</p>
+<p>net.ipv4.icmp_echo_ignore_all：忽略所有ping操作</p>
+<h3 id="伪文件系统"><a href="#伪文件系统" class="headerlink" title="伪文件系统"></a>伪文件系统</h3><h5 id="proc"><a href="#proc" class="headerlink" title="proc"></a>proc</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">内核状态和统计信息的输出接口；同时提供了配置接口&#x2F;proc&#x2F;sys</span><br><span class="line">	只读：&#x2F;proc&#x2F;@&#x2F;@</span><br><span class="line">	可写：&#x2F;proc&#x2F;sys&#x2F;可接收用户指定的值来修改内核</span><br><span class="line">	修改：</span><br><span class="line">		sysctl [option] name</span><br><span class="line">			-a：显示所有可修改的值&#x2F;proc&#x2F;sys&#x2F;目录下的参数值</span><br><span class="line">			-w name&#x3D;value：修改某值</span><br><span class="line">			-p cfg_path：立即生效</span><br><span class="line">配置文件在&#x2F;etc&#x2F;sysctl.d&#x2F;*.conf，修改后可永久有效</span><br></pre></td></tr></table></figure>
+
+<h5 id="sys"><a href="#sys" class="headerlink" title="sys"></a>sys</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">用于输出内核识别出的各硬件相关属性信息，也有内核对硬件特性的可设置参数，可定制硬件工作特性</span><br><span class="line">udev：通过读取&#x2F;sys目录下的硬件设备信息创建对应的硬件设备文件，方便管理</span><br><span class="line">配置文件一般在&#x2F;etc&#x2F;udev&#x2F;rules.d&#x2F;目录以及&#x2F;usr&#x2F;lib&#x2F;udev&#x2F;rules.d&#x2F;</span><br><span class="line">#例子</span><br><span class="line">&#x2F;etc&#x2F;udev&#x2F;rules.d&#x2F;70-persistent-ipoib.rules保存了网卡硬件信息，如果有多块网卡想交换则修改这里</span><br><span class="line">同时还要修改&#x2F;etc&#x2F;sysconfig&#x2F;network-scripts&#x2F;下的网卡信息</span><br><span class="line">要想上述更改生效需要使用modprobe -r卸载在装载模块</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="内核相关命令"><a href="#内核相关命令" class="headerlink" title="内核相关命令"></a>内核相关命令</h3><h4 id="编译选择符号"><a href="#编译选择符号" class="headerlink" title="编译选择符号"></a>编译选择符号</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[ ]：不要此模块</span><br><span class="line">[M]：编译成内核模块，用到时再装载</span><br><span class="line">[*]：直接编译进内核核心</span><br></pre></td></tr></table></figure>
+
+<h4 id="内核信息获取"><a href="#内核信息获取" class="headerlink" title="内核信息获取"></a>内核信息获取</h4><h5 id="uname"><a href="#uname" class="headerlink" title="uname"></a>uname</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#显示系统信息</span></span><br><span class="line">uname [option]</span><br><span class="line">	-r：显示内核的release号</span><br><span class="line">	-n：显示主机名，即hostname</span><br><span class="line">	-v：显示编译版本号</span><br><span class="line">	-a：显示所有信息</span><br></pre></td></tr></table></figure>
+
+<h5 id="lsmod"><a href="#lsmod" class="headerlink" title="lsmod"></a>lsmod</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#显示内核状态，内容来自/proc/modules</span></span><br><span class="line">lsmod</span><br></pre></td></tr></table></figure>
+
+<h5 id="modinfo"><a href="#modinfo" class="headerlink" title="modinfo"></a>modinfo</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">#显示单个模块信息</span><br><span class="line">modinfo name</span><br><span class="line">	-k：指明内核(适用多内核)</span><br><span class="line">	-F field：显示指定字段</span><br><span class="line">	-n：显示文件路径</span><br></pre></td></tr></table></figure>
+
+<h4 id="内核模块管理"><a href="#内核模块管理" class="headerlink" title="内核模块管理"></a>内核模块管理</h4><h5 id="modprobe"><a href="#modprobe" class="headerlink" title="modprobe"></a>modprobe</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#实现模块的动态装载和卸载，不加选项则安装指定模块</span></span><br><span class="line"><span class="comment">#正在使用的模块不要随意卸载</span></span><br><span class="line">modprobe [option] name</span><br><span class="line">	-r：卸载模块</span><br></pre></td></tr></table></figure>
+
+<h5 id="depmod"><a href="#depmod" class="headerlink" title="depmod"></a>depmod</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#生成依赖关系</span></span><br><span class="line">depmod [option] name</span><br></pre></td></tr></table></figure>
+
+<h5 id="insmod"><a href="#insmod" class="headerlink" title="insmod"></a>insmod</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#安装指定模块，但是无法解决依赖关系</span></span><br><span class="line"><span class="comment">#filename必须是具体模块路径，可使用modinfo -n module_name</span></span><br><span class="line">insmod [option] filename</span><br></pre></td></tr></table></figure>
+
+<h5 id="rmmod"><a href="#rmmod" class="headerlink" title="rmmod"></a>rmmod</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#删除指定模块</span></span><br><span class="line">rmmod module_name</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="内核编译"><a href="#内核编译" class="headerlink" title="内核编译"></a>内核编译</h3><h4 id="开发环境"><a href="#开发环境" class="headerlink" title="开发环境"></a>开发环境</h4><p>Centos6/7：Development tools、server platform development、ncurses相关包</p>
+<h4 id="硬件信息"><a href="#硬件信息" class="headerlink" title="硬件信息"></a>硬件信息</h4><h5 id="cpu"><a href="#cpu" class="headerlink" title="cpu"></a>cpu</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#查看cpu信息，主要看平台型号即可</span></span><br><span class="line">cat /proc/info</span><br><span class="line">lscpu</span><br></pre></td></tr></table></figure>
+
+<h5 id="pci"><a href="#pci" class="headerlink" title="pci"></a>pci</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#查看pci信息</span></span><br><span class="line">lscpi</span><br><span class="line"><span class="comment">#查看sub信息</span></span><br><span class="line">lsusb</span><br><span class="line"><span class="comment">#查看硬盘设备</span></span><br><span class="line">lsblk</span><br></pre></td></tr></table></figure>
+
+<h4 id="编译"><a href="#编译" class="headerlink" title="编译"></a>编译</h4><ul>
+<li>下载内核并解压到/usr/source/kernel目录下，并创建连接对其操作</li>
+<li>使用make menuconfig进入图形界面设置内核模块</li>
+<li>make编译、make modules_install、make install</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#进行内核编译时建议使用screen运行，防止终端断开导致内核编译失败</span></span><br><span class="line">打开：screen</span><br><span class="line">拆除：ctrl+a，d</span><br><span class="line">列出：screen -ls</span><br><span class="line">连接：screen -r screen_id</span><br><span class="line">关闭：<span class="built_in">exit</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h5><p>红帽系列的内核编译配置文件一般在/boot/config-4.18.0-80.el8.x86_64文件，里面列出了当前内核编译时的一些选项。非红帽发行版可能在/proc/config.gz内有配置文件。</p>
+<p>编译前需要将上述这个模板复制过来，然后使用make menuconfig在其基础上进行修改即可。</p>
+<h5 id="进行编译"><a href="#进行编译" class="headerlink" title="进行编译"></a>进行编译</h5><p>多线程编译：make -j 指定cpu核心数</p>
+<p>只对内核某个模块进行编译：切换到/usr/src/kernel对应模块目录下，使用make file_name.ko进行编译，注意.ko的文件必须是一个已有的.c文件。最后将其放到/lib/modules/release-name/kernel/下的对应目录中即可</p>
+<h5 id="内核清理"><a href="#内核清理" class="headerlink" title="内核清理"></a>内核清理</h5><p>用于对执行过编译操作的内核源码树进行重新编译</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#清理绝大多数文件，但保存config</span></span><br><span class="line">make clean</span><br><span class="line"><span class="comment">#清理所有文件</span></span><br><span class="line">make mrproper</span><br><span class="line"><span class="comment">#相当于mrproper，额外清理patches和编辑器备份文件</span></span><br><span class="line">make distclean</span><br></pre></td></tr></table></figure>
+
+<h5 id="模块安装"><a href="#模块安装" class="headerlink" title="模块安装"></a>模块安装</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">make modules_install</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E5%86%85%E6%A0%B8%E7%AE%A1%E7%90%86/" rel="tag"># 内核管理</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/06/%E7%B3%BB%E7%BB%9F%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/" rel="prev" title="系统启动流程">
+      <i class="fa fa-chevron-left"></i> 系统启动流程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/01/06/SELinux%E7%AE%80%E4%BB%8B/" rel="next" title="SELinux简介">
+      SELinux简介 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#内核特点"><span class="nav-number">1.</span> <span class="nav-text">内核特点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#组成部分"><span class="nav-number">2.</span> <span class="nav-text">组成部分</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#核心文件"><span class="nav-number">2.1.</span> <span class="nav-text">核心文件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#模块文件"><span class="nav-number">2.2.</span> <span class="nav-text">模块文件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ramdisk"><span class="nav-number">2.3.</span> <span class="nav-text">ramdisk</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#重要内核参数"><span class="nav-number">3.</span> <span class="nav-text">重要内核参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#伪文件系统"><span class="nav-number">4.</span> <span class="nav-text">伪文件系统</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#proc"><span class="nav-number">4.0.1.</span> <span class="nav-text">proc</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#sys"><span class="nav-number">4.0.2.</span> <span class="nav-text">sys</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内核相关命令"><span class="nav-number">5.</span> <span class="nav-text">内核相关命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#编译选择符号"><span class="nav-number">5.1.</span> <span class="nav-text">编译选择符号</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内核信息获取"><span class="nav-number">5.2.</span> <span class="nav-text">内核信息获取</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#uname"><span class="nav-number">5.2.1.</span> <span class="nav-text">uname</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#lsmod"><span class="nav-number">5.2.2.</span> <span class="nav-text">lsmod</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#modinfo"><span class="nav-number">5.2.3.</span> <span class="nav-text">modinfo</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内核模块管理"><span class="nav-number">5.3.</span> <span class="nav-text">内核模块管理</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#modprobe"><span class="nav-number">5.3.1.</span> <span class="nav-text">modprobe</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#depmod"><span class="nav-number">5.3.2.</span> <span class="nav-text">depmod</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#insmod"><span class="nav-number">5.3.3.</span> <span class="nav-text">insmod</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#rmmod"><span class="nav-number">5.3.4.</span> <span class="nav-text">rmmod</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内核编译"><span class="nav-number">6.</span> <span class="nav-text">内核编译</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#开发环境"><span class="nav-number">6.1.</span> <span class="nav-text">开发环境</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#硬件信息"><span class="nav-number">6.2.</span> <span class="nav-text">硬件信息</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#cpu"><span class="nav-number">6.2.1.</span> <span class="nav-text">cpu</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#pci"><span class="nav-number">6.2.2.</span> <span class="nav-text">pci</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#编译"><span class="nav-number">6.3.</span> <span class="nav-text">编译</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#配置文件"><span class="nav-number">6.3.1.</span> <span class="nav-text">配置文件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#进行编译"><span class="nav-number">6.3.2.</span> <span class="nav-text">进行编译</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#内核清理"><span class="nav-number">6.3.3.</span> <span class="nav-text">内核清理</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#模块安装"><span class="nav-number">6.3.4.</span> <span class="nav-text">模块安装</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
