@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="存储概念DAS：Direct Attached Storage 接口类型：”block”">
+<meta property="og:type" content="article">
+<meta property="og:title" content="存储共享">
+<meta property="og:url" content="http://yoursite.com/2020/01/12/%E5%AD%98%E5%82%A8%E5%85%B1%E4%BA%AB/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="存储概念DAS：Direct Attached Storage 接口类型：”block”">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-12T11:48:52.000Z">
+<meta property="article:modified_time" content="2020-01-12T11:50:06.011Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="ftp">
+<meta property="article:tag" content="nfs">
+<meta property="article:tag" content="samba">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/12/%E5%AD%98%E5%82%A8%E5%85%B1%E4%BA%AB/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>存储共享 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">40</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">2</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">29</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/12/%E5%AD%98%E5%82%A8%E5%85%B1%E4%BA%AB/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          存储共享
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-12 19:48:52 / 修改时间：19:50:06" itemprop="dateCreated datePublished" datetime="2020-01-12T19:48:52+08:00">2020-01-12</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="存储概念"><a href="#存储概念" class="headerlink" title="存储概念"></a>存储概念</h3><p>DAS：Direct Attached Storage</p>
+<p>接口类型：”block”</p>
+<a id="more"></a>
+<p>特点：存储设备直连服务器</p>
+<p>设备：SATA、SAS、IDE、SCSI、USB</p>
+<p>NAS：Network Attached Storage</p>
+<p>接口类型：”file”</p>
+<p>特点：将存储功能从服务器分离，通过网络协议来存取数据</p>
+<p>协议：CIFS、NFS</p>
+<p>SAN：Storage Area Network</p>
+<p>接口类型：”block”</p>
+<p>特点：与NAS类似，但是每个每个存储阵列都有自己的文件管理系统</p>
+<p>协议：ISCIS、FCSAN、FCOE</p>
+<h3 id="FTP"><a href="#FTP" class="headerlink" title="FTP"></a>FTP</h3><p>文件传输协议。连接主要有两种，一种是命令连接，用于客户端和服务器保持通话，传输命令，一般服务器监听21号端口；一种是数据连接，用于传输数据，一般服务器监听20号端口。但是现在ftp不是固定20号传输数据，会在通话时告诉客户端自己开了哪个端口，在那个端口进行数据传输。</p>
+<h4 id="PAM"><a href="#PAM" class="headerlink" title="PAM"></a>PAM</h4><p>用于实现认证的第三方库，是一个高度模块化的文件。其配置文件在/etc/pam.d/目录下。每个用到pam的程序都有对应的配置文件。</p>
+<h4 id="vsftpd"><a href="#vsftpd" class="headerlink" title="vsftpd"></a>vsftpd</h4><p>它是一个ftp的服务端程序，是轻量级的安全的ftp程序。</p>
+<p>路径映射：用户家目录。vsftpd以ftp用户的身份运行进程，默认用户即为ftp用户，匿名用户的默认路径即为ftp用户的家目录/var/ftp。</p>
+<p>注意：用户通过ftp登录后的权限取决于两个方面。第一是文件系统的权限，即ftp文件在服务器上的属主或属主权限。第二个是ftp服务器开放的权限。用户的权限是这两个权限的交集。</p>
+<h5 id="用户类别"><a href="#用户类别" class="headerlink" title="用户类别"></a>用户类别</h5><p>匿名用户：anonymous，其实就是ftp用户，它的登录目录为/var/ftp</p>
+<p>系统用户：系统上拥有的用户，在/etc/vsftpd/ftpusers下定义用户名，在/etc/pam.d/vsftpd下定义了pam模块使用passwd和shadow来验证系统用户的登录。以系统用户身份登录后默认目录为其家目录。</p>
+<p>虚拟用户：不是系统用户，可以定义在mysql数据库或普通文本文件中，相应的需要修改pam模块来验证。</p>
+<h5 id="守护进程"><a href="#守护进程" class="headerlink" title="守护进程"></a>守护进程</h5><p>standalone：独立守护进程；由服务进程自行监听套接字，用于访问比较繁忙的服务</p>
+<p>transient：瞬时守护进程；由systemd代为监听套接字，有请求就启动服务进程</p>
+<h5 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#主程序在/usr/sbin/vsftpd</span></span><br><span class="line"><span class="comment">#主配置文件在/etc/vsftpd/vsftpd.conf</span></span><br><span class="line"><span class="comment">#数据根目录在/var/ftp</span></span><br><span class="line"><span class="comment">#systemd管理单元在/usr/lib/systemd/system/vsftpd.service</span></span><br></pre></td></tr></table></figure>
+
+<h6 id="匿名用户"><a href="#匿名用户" class="headerlink" title="匿名用户"></a>匿名用户</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#/etc/vsftpd/vsftpd.conf</span></span><br><span class="line"><span class="comment">#是否启用匿名账号，默认YES</span></span><br><span class="line">anonymous_enable=YES</span><br><span class="line"><span class="comment">#是否可以上传文件，默认NO</span></span><br><span class="line">anon_upload_enable=NO</span><br><span class="line"><span class="comment">#是否可以创建目录，默认NO</span></span><br><span class="line">anon_mkdir_write_enable=NO</span><br><span class="line"><span class="comment">#是否可以删除文件或目录，默认NO</span></span><br><span class="line">anon_other_write_enable=NO</span><br><span class="line"><span class="comment">#是否全局只读，默认YES</span></span><br><span class="line">anon_world_readable_only=YES</span><br><span class="line"><span class="comment">#设置匿名优先级</span></span><br><span class="line">anon_umask=077</span><br></pre></td></tr></table></figure>
+
+<h6 id="系统用户"><a href="#系统用户" class="headerlink" title="系统用户"></a>系统用户</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#/etc/vsftpd/vsftpd.conf</span></span><br><span class="line"><span class="comment">#是否启用系统本地用户，默认YES</span></span><br><span class="line">local_enable=YES</span><br><span class="line"><span class="comment">#本地用户是否具有写权限，默认YES</span></span><br><span class="line">write_enable=YES</span><br><span class="line"><span class="comment">#设置本地用户上传文件的掩码(666-022=644)</span></span><br><span class="line">local_umask=022</span><br><span class="line"></span><br><span class="line"><span class="comment">#辅助配置文件/etc/vsftpd/ftpusers，黑名单</span></span><br><span class="line">列在此文件中的用户均禁止访问ftp服务</span><br><span class="line"><span class="comment">#禁锢所有本地用户于其家目录中；需要事先去除用户对家目录的写权限</span></span><br><span class="line">chroot_local_user=YES</span><br><span class="line"><span class="comment">#禁锢列表中的用户于其家目录中；需要事先去除用户对家目录的写权限</span></span><br><span class="line">chroot_list_enable=YES</span><br><span class="line">chroot_list_file=/etc/vsftpd/chroot_list</span><br><span class="line"></span><br><span class="line"><span class="comment">#自定义白名单和黑名单，文件列表定义在/etc/vsftpd/user_list中</span></span><br><span class="line">userlist_enable=YES</span><br><span class="line"><span class="comment">#NO表示白名单，YES表示黑名单</span></span><br><span class="line">userlist_deny=NO|YES</span><br></pre></td></tr></table></figure>
+
+<h6 id="日志传输"><a href="#日志传输" class="headerlink" title="日志传输"></a>日志传输</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#是否启用日志</span></span><br><span class="line">xferlog_enable=YES</span><br><span class="line">xferlog_file=/var/<span class="built_in">log</span>/xferlog</span><br><span class="line">xferlog_std_format=YES</span><br></pre></td></tr></table></figure>
+
+<h6 id="并发连接"><a href="#并发连接" class="headerlink" title="并发连接"></a>并发连接</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#设置最大并发连接数</span></span><br><span class="line">max_clients=2000</span><br><span class="line"><span class="comment">#单ip最大连接数</span></span><br><span class="line">max_per_ip=50</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="NFS"><a href="#NFS" class="headerlink" title="NFS"></a>NFS</h3><p>网络文件系统。监听tcp2049端口。</p>
+<p>其实NFS也像ext一样，是内核中的一个模块，通过VFS统一接口后挂载到用户层调用。但是用户在访问nfs系统时，通过内核后直接走套接字连接一台服务器，最终访问的是服务器上的文件系统，该文件系统可以是ext、xfs等任意文件系统。这个过程有一个问题，因为内核通过用户id来分辨用户，但此时服务器和客户端本地假如出现相同的id的用户，那就会出现访问控制问题。因此，需要使用统一的认证服务来确保不论是服务器还是本地用户都进行统一认证，即使用一个统一的认证数据库，这样就不会出现用户冲突的问题。常见的认证服务有：ldap、nls等。</p>
+<h4 id="辅助类服务"><a href="#辅助类服务" class="headerlink" title="辅助类服务"></a>辅助类服务</h4><p>rpc.mountd：用于检查连接的主机ip是否允许连接</p>
+<p>rpc.lock：用于防止同时读写的冲突</p>
+<p>rpc.statd：保存每个连接的状态</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#安装</span></span><br><span class="line">dnf install -y nfs-utils</span><br></pre></td></tr></table></figure>
+
+<h4 id="配置文件-1"><a href="#配置文件-1" class="headerlink" title="配置文件"></a>配置文件</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#配置文件存放在/etc/exports和/etc/exports.d目录下</span></span><br><span class="line"><span class="comment">#语法</span></span><br><span class="line">/path	clients1(export_option) clients2(export_option)</span><br><span class="line">clients:</span><br><span class="line">	single host：ipv4、ipv6、fqnd</span><br><span class="line">	network：ip/mask</span><br><span class="line">	wildcards：主机名通配，例如：*.top</span><br><span class="line">	netgroups：NIS域内的主机组，例如：@group_name</span><br><span class="line">	anonymous：使用*通配所有主机</span><br><span class="line">General options：</span><br><span class="line">	ro：只读</span><br><span class="line">	rw：读写</span><br><span class="line">	sync：同步</span><br><span class="line">	async：异步</span><br><span class="line">	secure：客户端端口小于1024</span><br><span class="line">User ID Mapping：</span><br><span class="line">	anonuid=user_id：设置映射用户id</span><br><span class="line">	anongid=group_id：设置映射用户组id</span><br><span class="line">	root_squash：压缩root用户，一般映射为nfsnobody</span><br><span class="line">	no_root_squash：不压缩root用户</span><br><span class="line">	all_squash：压缩所有用户</span><br><span class="line">	anonuld and anongld：将压缩的用户映射为此处指定的用户</span><br><span class="line">	</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line"><span class="comment">#在192.168.163.132配置如下条目并重启nfs服务</span></span><br><span class="line">/etc/	192.168.163.131(rw,all_squash)</span><br><span class="line">systemctl restart nfs</span><br><span class="line"><span class="comment">#在192.168.163.131主机上使用如下命令检测</span></span><br><span class="line">showmount -e 192.168.163.132</span><br><span class="line"><span class="comment">#挂载132主机的etc目录到本地的/mnt/media下</span></span><br><span class="line">mount -t nfs 192.168.163.132:/etc /mnt/media/</span><br></pre></td></tr></table></figure>
+
+<h4 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#修改配置文件后重新导出配置文件，即立即生效</span></span><br><span class="line">exportfs -rav</span><br><span class="line"><span class="comment">#查看指定nfs服务器开启哪些挂载目录</span></span><br><span class="line">showmount -e ip</span><br></pre></td></tr></table></figure>
+
+<h4 id="配置流程"><a href="#配置流程" class="headerlink" title="配置流程"></a>配置流程</h4><p>首先在服务器端编辑/etc/exports创建目录条目，然后在客户端直接挂载即可。</p>
+<h3 id="samba"><a href="#samba" class="headerlink" title="samba"></a>samba</h3><p>samba是一款跨平台的服务器文件共享方案。</p>
+<p>NetBIOS：用于广播实现主机名解析</p>
+<p>SMB：实现文件系统共享</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#安装</span></span><br><span class="line"><span class="comment">#服务器端</span></span><br><span class="line">yum install -y samba</span><br><span class="line"><span class="comment">#客户端</span></span><br><span class="line">yum install -y samba-client</span><br></pre></td></tr></table></figure>
+
+<h4 id="服务端"><a href="#服务端" class="headerlink" title="服务端"></a>服务端</h4><p>服务端：samba、samba-common、samba-libs</p>
+<p>配置文件：/etc/samba/smb.conf</p>
+<p>主程序：nmbd、smbd。前者用于提供主机名解析(为了windows解析)，后者用于共享文件的访问。</p>
+<p>systemd unit：smb.service、nmb.service</p>
+<p>监听端口：137/udp、138/udp、139/tcp、445/tcp</p>
+<h5 id="配置文件-2"><a href="#配置文件-2" class="headerlink" title="配置文件"></a>配置文件</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#/etc/samba/smb.conf</span></span><br><span class="line"><span class="comment">#Network</span></span><br><span class="line">workgroup：工作组</span><br><span class="line">server string：设定类似win的鼠标悬停信息</span><br><span class="line">netbios name：当前主机名</span><br><span class="line">interfaces：监听网卡接口或ip地址</span><br><span class="line">hosts allow：白名单，允许哪些网段或ip访问</span><br><span class="line">hosts deny：黑名单，禁止哪些网段或ip访问</span><br><span class="line"></span><br><span class="line"><span class="comment">#Logging</span></span><br><span class="line"><span class="built_in">log</span> file：指明日志文件路径</span><br><span class="line">max <span class="built_in">log</span> size：日志大小，超出会滚动日志(保存旧的，创建新的)</span><br><span class="line"></span><br><span class="line"><span class="comment">#Standalone server</span></span><br><span class="line">security：运行的安全模式，目前为user，且必须为系统账号，但使用samba独立密码</span><br><span class="line">passdb backend：加密方式</span><br><span class="line"></span><br><span class="line"><span class="comment">#Share</span></span><br><span class="line">writable：用户是否对家目录有写权限</span><br><span class="line">comment：注释信息</span><br><span class="line">path：需要共享的路径</span><br><span class="line">browseable：是否可浏览</span><br><span class="line">guest ok：是否被匿名用户访问</span><br><span class="line">write list：拥有写权限的用户列表</span><br><span class="line"><span class="built_in">read</span> only：是否只读</span><br><span class="line"></span><br><span class="line"><span class="comment">#检测，修改过配置文件后使用如下命令进行检测</span></span><br><span class="line">testparm</span><br></pre></td></tr></table></figure>
+
+<h5 id="创建samba用户"><a href="#创建samba用户" class="headerlink" title="创建samba用户"></a>创建samba用户</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#创建用户</span></span><br><span class="line">useradd smbuser</span><br><span class="line"><span class="comment">#设置samba密码</span></span><br><span class="line">smbpasswd -a smbuser</span><br></pre></td></tr></table></figure>
+
+<h5 id="创建共享文件"><a href="#创建共享文件" class="headerlink" title="创建共享文件"></a>创建共享文件</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">mkdir /data/samba/files/ -pv</span><br><span class="line"><span class="comment">#编辑/etc/samba/smb.conf</span></span><br><span class="line">[myfiles]</span><br><span class="line">        comment = A <span class="built_in">test</span> shared dir</span><br><span class="line">        path = /data/samba/files</span><br><span class="line">        public = yes</span><br><span class="line">        browseable = yes</span><br><span class="line">        write list = smbuser</span><br><span class="line"><span class="comment">#可以基于组权限设置，使用+号或@</span></span><br><span class="line">write list = +group_name</span><br></pre></td></tr></table></figure>
+
+<h5 id="设置文件系统权限"><a href="#设置文件系统权限" class="headerlink" title="设置文件系统权限"></a>设置文件系统权限</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">setfacl -m u:smbuser:rwx /data/samba/files/</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="客户端"><a href="#客户端" class="headerlink" title="客户端"></a>客户端</h4><p>smbclient：交互式命令行客户端，类似于lftp</p>
+<p>mount.cifs：挂载cifs文件系统的专用命令</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#匿名访问</span></span><br><span class="line">smbclient -L 192.168.163.131</span><br><span class="line"><span class="comment">#指定用户查看是否能访问</span></span><br><span class="line">smbclient -L 192.168.163.131 -U user1</span><br><span class="line"><span class="comment">#以指定的用户登录myfiles为定义在/etc/samba/smb.conf的一个字段</span></span><br><span class="line">smbclient //192.168.163.131/myfiles -U user1</span><br></pre></td></tr></table></figure>
+
+<h5 id="挂载"><a href="#挂载" class="headerlink" title="挂载"></a>挂载</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mount.cifs //192.168.163.131/myfiles /mnt -o username=smbuser,password=dqy751421</span><br></pre></td></tr></table></figure>
+
+<h5 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h5><p>samba有自己的用户管理系统，因此对于权限的要求更严谨。</p>
+<p>要确保客户端当前用户对挂载点有写权限；要确保映射目录对远程服务器对应id用户也有写权限；挂载的目录samba设置也要有写权限</p>
+<h4 id="用户管理有关命令"><a href="#用户管理有关命令" class="headerlink" title="用户管理有关命令"></a>用户管理有关命令</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">smbpasswd [option] username</span><br><span class="line">	-a：添加</span><br><span class="line">	-x：删除</span><br><span class="line">	-d：禁用</span><br><span class="line">	-e：启用</span><br><span class="line"></span><br><span class="line">pdbedit [option]</span><br><span class="line">	-L：列出所有samba服务中的用户</span><br><span class="line">	-a：添加samba用户</span><br><span class="line">		-u：要管理的用户</span><br><span class="line">	-x：删除samba用户</span><br><span class="line">	-t：从标准输出接收密码</span><br><span class="line">	</span><br><span class="line"><span class="comment">#显示samba服务的相关共享的信息</span></span><br><span class="line">smbstatus</span><br><span class="line">	-b：显示简要信息</span><br><span class="line">	-v：显示详细信息</span><br></pre></td></tr></table></figure>
+
+<h4 id="配置流程-1"><a href="#配置流程-1" class="headerlink" title="配置流程"></a>配置流程</h4><p>首先需要在服务器创建用户，且设置samba的用户密码。然后在配置文件/etc/samba/smb.conf中单独设置一个选项来配置要映射的文件夹路径。最后客户端直接挂载即可。注意点还是权限的管理。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/ftp/" rel="tag"># ftp</a>
+              <a href="/tags/nfs/" rel="tag"># nfs</a>
+              <a href="/tags/samba/" rel="tag"># samba</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/11/mariadb%E8%AF%A6%E8%A7%A3/" rel="prev" title="mariadb详解">
+      <i class="fa fa-chevron-left"></i> mariadb详解
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#存储概念"><span class="nav-number">1.</span> <span class="nav-text">存储概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#FTP"><span class="nav-number">2.</span> <span class="nav-text">FTP</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#PAM"><span class="nav-number">2.1.</span> <span class="nav-text">PAM</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#vsftpd"><span class="nav-number">2.2.</span> <span class="nav-text">vsftpd</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#用户类别"><span class="nav-number">2.2.1.</span> <span class="nav-text">用户类别</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#守护进程"><span class="nav-number">2.2.2.</span> <span class="nav-text">守护进程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#配置文件"><span class="nav-number">2.2.3.</span> <span class="nav-text">配置文件</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#匿名用户"><span class="nav-number">2.2.3.1.</span> <span class="nav-text">匿名用户</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#系统用户"><span class="nav-number">2.2.3.2.</span> <span class="nav-text">系统用户</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#日志传输"><span class="nav-number">2.2.3.3.</span> <span class="nav-text">日志传输</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#并发连接"><span class="nav-number">2.2.3.4.</span> <span class="nav-text">并发连接</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NFS"><span class="nav-number">3.</span> <span class="nav-text">NFS</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#辅助类服务"><span class="nav-number">3.1.</span> <span class="nav-text">辅助类服务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置文件-1"><span class="nav-number">3.2.</span> <span class="nav-text">配置文件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#常用命令"><span class="nav-number">3.3.</span> <span class="nav-text">常用命令</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置流程"><span class="nav-number">3.4.</span> <span class="nav-text">配置流程</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#samba"><span class="nav-number">4.</span> <span class="nav-text">samba</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#服务端"><span class="nav-number">4.1.</span> <span class="nav-text">服务端</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#配置文件-2"><span class="nav-number">4.1.1.</span> <span class="nav-text">配置文件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#创建samba用户"><span class="nav-number">4.1.2.</span> <span class="nav-text">创建samba用户</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#创建共享文件"><span class="nav-number">4.1.3.</span> <span class="nav-text">创建共享文件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#设置文件系统权限"><span class="nav-number">4.1.4.</span> <span class="nav-text">设置文件系统权限</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#客户端"><span class="nav-number">4.2.</span> <span class="nav-text">客户端</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#挂载"><span class="nav-number">4.2.1.</span> <span class="nav-text">挂载</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#注意"><span class="nav-number">4.2.2.</span> <span class="nav-text">注意</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#用户管理有关命令"><span class="nav-number">4.3.</span> <span class="nav-text">用户管理有关命令</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置流程-1"><span class="nav-number">4.4.</span> <span class="nav-text">配置流程</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">29</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">40</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
