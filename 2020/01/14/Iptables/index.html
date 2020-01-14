@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="概念防火墙即Firewall是一种隔离工具，它工作在主机或网络边缘，对于进出本主机或本网络的报文根据事先定义的检查规则作匹配检测，对于能够被规则匹配到的报文作出相应处理的组件。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Iptables">
+<meta property="og:url" content="http://yoursite.com/2020/01/14/Iptables/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="概念防火墙即Firewall是一种隔离工具，它工作在主机或网络边缘，对于进出本主机或本网络的报文根据事先定义的检查规则作匹配检测，对于能够被规则匹配到的报文作出相应处理的组件。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-14T08:48:22.000Z">
+<meta property="article:modified_time" content="2020-01-14T08:50:07.547Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="iptables">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/14/Iptables/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Iptables | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">44</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">2</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">31</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/14/Iptables/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Iptables
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-14 16:48:22 / 修改时间：16:50:07" itemprop="dateCreated datePublished" datetime="2020-01-14T16:48:22+08:00">2020-01-14</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p>防火墙即Firewall是一种隔离工具，它工作在主机或网络边缘，对于进出本主机或本网络的报文根据事先定义的检查规则作匹配检测，对于能够被规则匹配到的报文作出相应处理的组件。</p>
+<a id="more"></a>
+<p>根据作用域不同主要分为主机防火墙和网络防火墙。</p>
+<p>规则链/钩子/hook：这是一种用于实现检查功能的机制。主要分为如下五种：</p>
+<p>prerouting：进主机路由前</p>
+<p>input：进本机用户空间前</p>
+<p>output：从本地用户空间出来后</p>
+<p>forward：不是发往本机而是需要转发时</p>
+<p>postrouting：转发后，出网卡前</p>
+<h4 id="规则"><a href="#规则" class="headerlink" title="规则"></a>规则</h4><h5 id="组成部分"><a href="#组成部分" class="headerlink" title="组成部分"></a>组成部分</h5><p>一条规则由规则匹配条件和处理动作组成。</p>
+<p>匹配条件：基本匹配条件、扩展匹配条件(由扩展模块定义)</p>
+<p>处理动作：基本处理动作、扩展处理动作(由扩展模块定义)、自定义处理动作</p>
+<h5 id="规则定义原则"><a href="#规则定义原则" class="headerlink" title="规则定义原则"></a>规则定义原则</h5><p>同一类原则，控制范围小的(严格的)放在前面；不同类原则，访问频繁的放在前面。</p>
+<h4 id="链"><a href="#链" class="headerlink" title="链"></a>链</h4><p>链主要分为内置链和自定义链。内置链就是上文的五个链；自定义链可以实现更灵活的管理机制</p>
+<h3 id="功能"><a href="#功能" class="headerlink" title="功能"></a>功能</h3><p>filter：过滤，防火墙</p>
+<p>nat：地址转换，用于修改源ip或目标ip</p>
+<p>mangle：拆解报文，作出修改再封装(ttl、防火墙标记等)</p>
+<p>raw：关闭nat表上启用的连接追踪功能，即将连接记录在内存中</p>
+<h4 id="功能-链表"><a href="#功能-链表" class="headerlink" title="功能-链表"></a>功能-链表</h4><p>每个功能只能在特定的规则链上生效(<strong>生效优先级从上到下</strong>)。</p>
+<p>raw：PREROUTING、OUTPUT</p>
+<p>mangle：PREROUTING、INPUT、FORWARD、OUTPUT、POSTROUTING</p>
+<p>nat：PREROUTING、INPUT、OUTPUT、POSTROUTING</p>
+<p>filter：INPUT、FORWARD、OUTPUT</p>
+<h4 id="报文流向"><a href="#报文流向" class="headerlink" title="报文流向"></a>报文流向</h4><p>流入本机：PREROUTING、INPUT</p>
+<p>由本机流出：OUTPUT、POSTROUTING</p>
+<p>转发：PREROUTING、FORWARD、POSTROUTING</p>
+<h3 id="iptables命令"><a href="#iptables命令" class="headerlink" title="iptables命令"></a>iptables命令</h3><p>高度模块化。由诸多扩展模块实现其检查条件或处理动作的定义。模块文件存放在/usr/lib64/xtables/目录下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">iptables [-t table] COMMAND chain [-m matchname [per-match-options]] -j targetname [per-target-options]</span><br><span class="line">	-t table：raw、mangle、nat、[filter](默认为filter)</span><br><span class="line">	COMMAND：</span><br><span class="line">		链管理：</span><br><span class="line">			-N：自定义一条新的规则链</span><br><span class="line">			-x：删除自定义的规则链</span><br><span class="line">			-P：设置默认策略(ACCEPT、DROP、REJECT)</span><br><span class="line">			-E：重命名自定义链(引用计数器不为0的自定义链不能被重命名或删除)</span><br><span class="line">		规则管理：</span><br><span class="line">			-A：追加</span><br><span class="line">			-I：插入，要指明位置，省略时表示第一条</span><br><span class="line">			-D：删除</span><br><span class="line">				指明规则序号</span><br><span class="line">				指明规则本身</span><br><span class="line">			-R：替换指定链上的指定规则</span><br><span class="line">			-F：清空指定规则链</span><br><span class="line">			-Z：置零</span><br><span class="line">		查看：</span><br><span class="line">			-L：列出链上所有规则(L必须放在下列选项的最后)</span><br><span class="line">				-n：以数字格式显示地址和端口号，不进行反解</span><br><span class="line">				-v：显示详细信息</span><br><span class="line">				-x：显示计数器结果的精确值</span><br><span class="line">				--line-numbers：显示规则序号</span><br></pre></td></tr></table></figure>
+
+<h4 id="匹配条件"><a href="#匹配条件" class="headerlink" title="匹配条件"></a>匹配条件</h4><h5 id="基本匹配条件"><a href="#基本匹配条件" class="headerlink" title="基本匹配条件"></a>基本匹配条件</h5><p>无需加载任何模块，由iptables自行提供。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">-s：指明检查的源地址或网段，所有地址为0.0.0.0</span><br><span class="line">-d：指明检查的目的地址或网段，所有地址为0.0.0.0</span><br><span class="line">-p：指明协议，包括tcp、udp、udplite、icmp、icmpv6、all等</span><br><span class="line">-i：指明数据报文流入的接口，只用于PREROUTING、INPUT、FORWARD</span><br><span class="line">-o：指明数据报文流出的接口，只用于FORWARD、OUTPUT、POSTROUTING</span><br><span class="line">-j：指明匹配后如何处理，包括ACCEPT、DROP、REJECT</span><br></pre></td></tr></table></figure>
+
+<h5 id="扩展匹配条件"><a href="#扩展匹配条件" class="headerlink" title="扩展匹配条件"></a>扩展匹配条件</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">-m match_name per_option：使用特定模块和模块对应选项</span><br></pre></td></tr></table></figure>
+
+<h6 id="隐式扩展"><a href="#隐式扩展" class="headerlink" title="隐式扩展"></a>隐式扩展</h6><p>使用-p选项指明了特定的协议时，不需再使用-m选项指明扩展模块。因为每个协议在/usr/lib64/xtables/目录下都有对应的可加载模块。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">tcp:</span><br><span class="line">	[!] --sport port[:prot]：匹配报文的源端口，可以是范围</span><br><span class="line">	[!] --dport port[:prot]：匹配报文的目的端口，可以是范围</span><br><span class="line">	[!] --tcp-flags mask comp：mask表示要检查的标记位(逗号隔开)、comp表示标记位为1；</span><br><span class="line">	[!] --syn：匹配第一次握手</span><br><span class="line">icmp：</span><br><span class="line">	[!] --icmp-type num：指明icmp类型</span><br><span class="line"></span><br><span class="line"><span class="comment">#举例，允许ssh22端口连接</span></span><br><span class="line">iptables -A INPUT -d 192.168.163.131 -p tcp --dport 22 -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -s 192.168.163.131 -p tcp --sport 22 -j ACCEPT</span><br><span class="line"><span class="comment">#允许本地ping别的主机，发送是8，响应是0</span></span><br><span class="line">iptables -A INPUT -d 192.168.163.131 -p icmp --icmp-type 0 -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -s 192.168.163.131 -p icmp --icmp-type 8 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<h6 id="显式扩展"><a href="#显式扩展" class="headerlink" title="显式扩展"></a>显式扩展</h6><p>必须使用-m选项指明要调用的扩展模块的扩展机制。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line">multiport：以离散的方式开放多个端口</span><br><span class="line">	[!] --sports port[,port]：指定多个源端口</span><br><span class="line">	[!] --dports port[,port]：指定多个目的端口</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">iptables -I INPUT -d 192.168.163.131 -p tcp -m muliport --dports 22,80,139,445,3306 -j ACCEPT </span><br><span class="line"></span><br><span class="line">iprange：以连续地址快的方式来指明多IP地址匹配条件</span><br><span class="line">	[!] --src-range from[-to]：指明源地址范围</span><br><span class="line">	[!] --dst-range from[-to]：指明目的地址范围</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">iptables -I INPUT -d 192.168.163.131 -p tcp -m multiport -dports 22,80,139,445,3306 -m iprange --src-range 192.168.163.100-192.168.163.130 -j REJECT</span><br><span class="line"></span><br><span class="line">time：以时间来控制数据包</span><br><span class="line">	--timestart hh:mm[:ss]</span><br><span class="line">	--timestop hh:mm[:ss]</span><br><span class="line">	[!] --weekdays day[,day...]</span><br><span class="line">	[!] --monthdays day[,day...]</span><br><span class="line">	--datestart YYYY[-MM[-DD[Thh[:mm[:ss]]]]]</span><br><span class="line">	--datestop YYYY[-MM[-DD[Thh[:mm[:ss]]]]]</span><br><span class="line">	--kerneltz：使用内核配置的时区而非默认的UTC</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">iptables -R INPUT 3 -d 192.168.163.131 -p tcp --dport 23 -m iprange 192.168.163.100-192.168.163.130 -m time --timestart 10:00:00 --timestop 16:00:00 --weekdays 1,2,3,4,5 --kerneltz -j ACCEPT</span><br><span class="line"></span><br><span class="line">string：根据二进制流检查(明文编码才可以检查)</span><br><span class="line">	--algo &#123;bm|kmp&#125;：指定匹配算法，必须指定</span><br><span class="line">	[!] --string pattern：指定要匹配的字符串</span><br><span class="line">	[!] --hex-string pattern：指定要匹配的十六进制字符串</span><br><span class="line">	--from offset：指定起始偏移</span><br><span class="line">	--to offset：指定结束偏移</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">iptables -I OUTPUT -m string --algo bm --string <span class="string">"dqy"</span> -j REJECT</span><br><span class="line"></span><br><span class="line">connlimit：限制同一ip的最大并发连接数</span><br><span class="line">	--connlimit-upto n：限制连接数小于n</span><br><span class="line">	--connlimit-above n：限制连接数大于n</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">iptables -R INPUT 2 -d 192.168.163.131 -s 192.168.163.0/24 -p tcp -dport 3306 -m connlimit --connlimit-upto 3 -j ACCEPT</span><br><span class="line"></span><br><span class="line"><span class="built_in">limit</span>：用于限制报文发包速率(令牌桶算法)</span><br><span class="line">	--<span class="built_in">limit</span> rate/&#123;second|minute|day...&#125;：指明连接速率</span><br><span class="line">    --<span class="built_in">limit</span>-burst：指明令牌数量</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">iptables -I INPUT 6 -d 192.168.163.131 -p icmp --icmp-type 8 -m <span class="built_in">limit</span> --<span class="built_in">limit</span>-burst 8 --<span class="built_in">limit</span> 20/minute -j ACCEPT</span><br><span class="line">iptables -I INPUT 6 -d 192.168.163.131 -p icmp --icmp-type 0 -j ACCEPT</span><br><span class="line"><span class="comment">#可以使用-syn和limit来控制建立新请求的速度</span></span><br><span class="line"></span><br><span class="line">state：连接追踪，用于查看报文状态</span><br><span class="line">	[!] --state state(NEW(缓存中没有)、ESTABLISHED、UNTRACKED(raw表关闭追踪)、RELATED(与某个ESTABLISHED有关)、INVALID(无法识别))</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">iptables -A INPUT -d 192.168.163.131 -p tcp -m multiport --dports 21:23,80,139,445,3306 -m state --state NEW -j ACCEPT</span><br><span class="line">iptables -A INPUT -m state --state ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -m state --state ESTABLISHED -j ACCEPT</span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">该方法可以大大简化规则的编写。首先INPUT链第一条允许状态为ESTABLISED通过，OUTPUT链第一条允许ESTABLISHED通过。其余的之后再写即可。</span><br><span class="line">另外，由于ftp连接时需要2个端口，因此要用到RELATED状态，即在INPUT里设置一条关于tcp协议的RELATED状态放行即可。使用该方法前需要先装载内核模块nf_conntrack_ftp即可。(使用modprobe安装)</span><br><span class="line"><span class="comment">#追踪配置文件</span></span><br><span class="line"><span class="comment">#追踪到的连接</span></span><br><span class="line">/proc/net/nf_conntrack</span><br><span class="line"><span class="comment">#调整可记录的连接数最大值</span></span><br><span class="line">/proc/sys/net/nf_conntrack_max</span><br><span class="line"><span class="comment">#超时时长，存放各类协议的超时</span></span><br><span class="line">/proc/sys/net/netfilter/*timeout*</span><br></pre></td></tr></table></figure>
+
+<h4 id="处理动作"><a href="#处理动作" class="headerlink" title="处理动作"></a>处理动作</h4><h5 id="基本处理动作"><a href="#基本处理动作" class="headerlink" title="基本处理动作"></a>基本处理动作</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ACCEPT：接收</span><br><span class="line">DROP：直接丢弃</span><br></pre></td></tr></table></figure>
+
+<h5 id="扩展处理动作"><a href="#扩展处理动作" class="headerlink" title="扩展处理动作"></a>扩展处理动作</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">REJECT：接收后返回拒绝消息</span><br><span class="line">	--reject-with <span class="built_in">type</span>：指明拒绝类型</span><br><span class="line">	</span><br><span class="line">LOG：记录日志</span><br><span class="line">	--<span class="built_in">log</span>-level：指明日志等级</span><br><span class="line">	--<span class="built_in">log</span>-prefix：指明日志名称(区别信息)</span><br><span class="line">	</span><br><span class="line">RETURN：返回链调用，一般在自定义链中使用</span><br></pre></td></tr></table></figure>
+
+<h5 id="用户自定义链"><a href="#用户自定义链" class="headerlink" title="用户自定义链"></a>用户自定义链</h5><p>自定义链必须要被已有的链引用才能生效。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#首先新建一个rule</span></span><br><span class="line">iptables -N new_rules</span><br><span class="line"><span class="comment">#然后在new_rule中写相关的规则</span></span><br><span class="line">iptables -A new_rules -d 192.168.163.131 -p icmp -j REJECT</span><br><span class="line"><span class="comment">#最后在已有的链中调用(此处在INPUT中调用)，只要在动作指明新建的规则名即可</span></span><br><span class="line">iptables -I INPUT 5 -d 192.168.163.131 -p icmp -j new_rules</span><br></pre></td></tr></table></figure>
+
+<h4 id="保存"><a href="#保存" class="headerlink" title="保存"></a>保存</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables-save &gt; /path</span><br></pre></td></tr></table></figure>
+
+<h4 id="载入"><a href="#载入" class="headerlink" title="载入"></a>载入</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">iptables-restore &lt; /path</span><br><span class="line">	-n：不清楚原有规则</span><br><span class="line">	-t：仅分析不提交</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="规则优化思路"><a href="#规则优化思路" class="headerlink" title="规则优化思路"></a>规则优化思路</h3><p>使用自定义链管理特定应用的相关规则，模块化规则管理</p>
+<ul>
+<li>优先放行双向状态皆为ESTABLISHED的报文</li>
+<li>服务于不同类别的功能的规则，匹配到报文可能性更大的放在前面</li>
+<li>服务于同一类别的功能的规则，匹配条件较严格的放在前面</li>
+<li>设置默认策略，即白名单机制<ul>
+<li>不要使用iptables -P设置默认策略</li>
+<li>建议在规则最后定义策略作为默认策略</li>
+</ul>
+</li>
+</ul>
+<h3 id="nat转换"><a href="#nat转换" class="headerlink" title="nat转换"></a>nat转换</h3><p>nat转换主要用于隐藏客户端主机或者服务器主机，也用于解决ipv4地址数量问题。</p>
+<p>snat：隐藏客户端访问外网，规则要定义在POSTROUTING上</p>
+<p>dnat：隐藏服务端，接收客户端访问，规则要定义在PREROUTING上</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#SNAT，用于静态ip，不能限制端口的开放</span></span><br><span class="line">SNAT</span><br><span class="line">	--to-source [ipaddr[-ipaddr]]：指明将虚地址转换为哪个公有地址，可以是范围(根据NAT服务器网卡决定)</span><br><span class="line">	--random：随机转换一个地址</span><br><span class="line">	--persistent：固定转换地址</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">iptables -t nat -A POSTROUTING -s 192.168.163.0/24 -j SNAT --to-source 172.16.0.6</span><br><span class="line"></span><br><span class="line"><span class="comment">#MASQUERADE，用于动态ip</span></span><br><span class="line">MASQUERADE：当外网地址不固定时，使用此target，但会消耗很多资源</span><br><span class="line"></span><br><span class="line"><span class="comment">#DNAT，只开放有限端口</span></span><br><span class="line">DNAT</span><br><span class="line">	--to-destination [ipaddr[-ipaddr]][:port[-port]]：指明将公网ip转为哪个虚ip</span><br><span class="line">	--random：随机转换一个地址</span><br><span class="line">	--persistent：固定转换地址</span><br><span class="line"><span class="comment">#举例，NAT_IP为nat服务器的网卡ip</span></span><br><span class="line">iptables -t nat -A PREROUTING -d NAT_IP -p tcp --dport 80 -j DNAT --to-destination 192.168.163.131:80</span><br><span class="line"></span><br><span class="line"><span class="comment">#REDIRECT，用于单个主机的端口映射</span></span><br><span class="line">	--to-ports port[-port]</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">iptables -A PREROUTING -t nat -d 192.168.163.131 -p tcp --dport 80 -j REDIRECT --to-ports 8080</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/iptables/" rel="tag"># iptables</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/12/%E5%AD%98%E5%82%A8%E5%85%B1%E4%BA%AB/" rel="prev" title="存储共享">
+      <i class="fa fa-chevron-left"></i> 存储共享
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/01/14/%E6%97%B6%E9%97%B4%E3%80%81%E6%97%A5%E5%BF%97%E3%80%81sudo/" rel="next" title="时间、日志、sudo">
+      时间、日志、sudo <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#概念"><span class="nav-number">1.</span> <span class="nav-text">概念</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#规则"><span class="nav-number">1.1.</span> <span class="nav-text">规则</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#组成部分"><span class="nav-number">1.1.1.</span> <span class="nav-text">组成部分</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#规则定义原则"><span class="nav-number">1.1.2.</span> <span class="nav-text">规则定义原则</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#链"><span class="nav-number">1.2.</span> <span class="nav-text">链</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#功能"><span class="nav-number">2.</span> <span class="nav-text">功能</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#功能-链表"><span class="nav-number">2.1.</span> <span class="nav-text">功能-链表</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#报文流向"><span class="nav-number">2.2.</span> <span class="nav-text">报文流向</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#iptables命令"><span class="nav-number">3.</span> <span class="nav-text">iptables命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#匹配条件"><span class="nav-number">3.1.</span> <span class="nav-text">匹配条件</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#基本匹配条件"><span class="nav-number">3.1.1.</span> <span class="nav-text">基本匹配条件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#扩展匹配条件"><span class="nav-number">3.1.2.</span> <span class="nav-text">扩展匹配条件</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#隐式扩展"><span class="nav-number">3.1.2.1.</span> <span class="nav-text">隐式扩展</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#显式扩展"><span class="nav-number">3.1.2.2.</span> <span class="nav-text">显式扩展</span></a></li></ol></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#处理动作"><span class="nav-number">3.2.</span> <span class="nav-text">处理动作</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#基本处理动作"><span class="nav-number">3.2.1.</span> <span class="nav-text">基本处理动作</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#扩展处理动作"><span class="nav-number">3.2.2.</span> <span class="nav-text">扩展处理动作</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#用户自定义链"><span class="nav-number">3.2.3.</span> <span class="nav-text">用户自定义链</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#保存"><span class="nav-number">3.3.</span> <span class="nav-text">保存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#载入"><span class="nav-number">3.4.</span> <span class="nav-text">载入</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#规则优化思路"><span class="nav-number">4.</span> <span class="nav-text">规则优化思路</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#nat转换"><span class="nav-number">5.</span> <span class="nav-text">nat转换</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">31</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
