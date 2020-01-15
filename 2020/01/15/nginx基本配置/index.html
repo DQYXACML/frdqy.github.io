@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="事件驱动模型事件驱动指当用户进程发起磁盘io时，该进程告诉内核一个回调接口，即内核加载磁盘数据到内核空间后会通知发起该动作的进程。随后，进程接收到回调信号后，参与数据从内核空间到进程空间的过程。在Linux中，事件驱动的系统调用叫做epoll，由libevent包提供。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="nginx基本配置">
+<meta property="og:url" content="http://yoursite.com/2020/01/15/nginx%E5%9F%BA%E6%9C%AC%E9%85%8D%E7%BD%AE/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="事件驱动模型事件驱动指当用户进程发起磁盘io时，该进程告诉内核一个回调接口，即内核加载磁盘数据到内核空间后会通知发起该动作的进程。随后，进程接收到回调信号后，参与数据从内核空间到进程空间的过程。在Linux中，事件驱动的系统调用叫做epoll，由libevent包提供。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-15T11:16:04.000Z">
+<meta property="article:modified_time" content="2020-01-15T11:17:12.045Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="nginx">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/15/nginx%E5%9F%BA%E6%9C%AC%E9%85%8D%E7%BD%AE/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>nginx基本配置 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">45</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">2</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">32</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/15/nginx%E5%9F%BA%E6%9C%AC%E9%85%8D%E7%BD%AE/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          nginx基本配置
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-15 19:16:04 / 修改时间：19:17:12" itemprop="dateCreated datePublished" datetime="2020-01-15T19:16:04+08:00">2020-01-15</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="事件驱动模型"><a href="#事件驱动模型" class="headerlink" title="事件驱动模型"></a>事件驱动模型</h3><p>事件驱动指当用户进程发起磁盘io时，该进程告诉内核一个回调接口，即内核加载磁盘数据到内核空间后会通知发起该动作的进程。随后，进程接收到回调信号后，参与数据从内核空间到进程空间的过程。在Linux中，事件驱动的系统调用叫做epoll，由libevent包提供。</p>
+<a id="more"></a>
+
+<h3 id="程序架构"><a href="#程序架构" class="headerlink" title="程序架构"></a>程序架构</h3><p>nginx基于master-worker模型，即一个主控进程master生成多个子进程worker来处理用户请求。其中master负责加载和分析配置文件、管理worker进程和平滑升级。</p>
+<h4 id="特性"><a href="#特性" class="headerlink" title="特性"></a>特性</h4><p>异步、事件驱动、非阻塞</p>
+<p>并发请求：epoll</p>
+<p>文件io：sendfile，mmap</p>
+<p>模块化：支持动态装载和卸载，包括core module、http modules、mail modules和stream modules(传输层代理，即4层代理)</p>
+<h4 id="功能"><a href="#功能" class="headerlink" title="功能"></a>功能</h4><ul>
+<li>静态web服务器资源</li>
+<li>结合FastCGI协议实现反代动态资源请求</li>
+<li>http/https协议的反向代理</li>
+<li>imap4/pop3协议的反向代理</li>
+<li>tcp/udp的反向代理</li>
+</ul>
+<h4 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h4><p>主程序文件：/usr/sbin/nginx</p>
+<p>unit file：nginx.service</p>
+<p>配置文件：/etc/nginx/nginx.conf、/etc/nginx/conf.d/*.conf、fastcgi、mimetypes等</p>
+<h3 id="安装配置"><a href="#安装配置" class="headerlink" title="安装配置"></a>安装配置</h3><h4 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">yum install epel-release -y</span><br><span class="line">yum makecache</span><br><span class="line">yum install nginx -y</span><br></pre></td></tr></table></figure>
+
+<h4 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h4><h5 id="运行必备"><a href="#运行必备" class="headerlink" title="运行必备"></a>运行必备</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#可以用用户名，也可用组名</span></span><br><span class="line">user user [group];</span><br><span class="line"><span class="comment">#指定nginx进程路径</span></span><br><span class="line">pid /path;</span><br><span class="line"><span class="comment">#指明包含其他配置文件路径</span></span><br><span class="line">include file | mask;</span><br><span class="line"><span class="comment">#指明动态装载的模块</span></span><br><span class="line">load_module file;</span><br></pre></td></tr></table></figure>
+
+<h5 id="性能优化"><a href="#性能优化" class="headerlink" title="性能优化"></a>性能优化</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#worker进程数量，通常小于等于cpu的物理核心数</span></span><br><span class="line">worker_process number | auto;</span><br><span class="line"><span class="comment">#将cpu与nginx进程绑定，主要用于专机专用</span></span><br><span class="line">worker_cpu_affinity cpumask | auto;</span><br><span class="line"><span class="comment">#指定worker进程的nice值[-20,19]</span></span><br><span class="line">worker_priority number;</span><br><span class="line"><span class="comment">#所有的worker进程所能打开的文件数量上限</span></span><br><span class="line">worker_rlimit_nofile</span><br></pre></td></tr></table></figure>
+
+<h5 id="调试相关"><a href="#调试相关" class="headerlink" title="调试相关"></a>调试相关</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#是否以守护进程的方式运行nginx，通常设置在centos6上，因为7已经编程systemd管理</span></span><br><span class="line">daemon on | off;</span><br><span class="line"><span class="comment">#是否以master/worker模型运行nginx；默认为on</span></span><br><span class="line">master_process on | off;</span><br><span class="line"><span class="comment">#错误日志路径和日志级别，自我管理，不使用rsyslog</span></span><br><span class="line">error_log file [level];</span><br></pre></td></tr></table></figure>
+
+<h5 id="事件驱动"><a href="#事件驱动" class="headerlink" title="事件驱动"></a>事件驱动</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">放在events段中</span><br><span class="line"><span class="comment">#每个worker进程能够打开的最大进程并发数</span></span><br><span class="line">worker_connections number;</span><br><span class="line"><span class="comment">#指明并发连接请求的处理方法</span></span><br><span class="line">use method;</span><br><span class="line"><span class="comment">#处理连接请求的方法；on表示各worker轮流处理，off表示各个请求到达会通知所有worker</span></span><br><span class="line">accept_mutex on | off;</span><br></pre></td></tr></table></figure>
+
+<h5 id="http相关"><a href="#http相关" class="headerlink" title="http相关"></a>http相关</h5><h6 id="套接字配置"><a href="#套接字配置" class="headerlink" title="套接字配置"></a>套接字配置</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#配置虚拟主机</span></span><br><span class="line">server&#123;</span><br><span class="line">	listen address[:port]|port;</span><br><span class="line">		default_server：设定为默认主机</span><br><span class="line">		ssl：限制只能通过ssl连接提供服务，即通过https</span><br><span class="line">		backlog=number：后援队列长度</span><br><span class="line">		rcvbuf=size：接收缓冲区大小</span><br><span class="line">		sndbuf=size：发送缓冲区大小</span><br><span class="line">	server_name SERVER_NAME;</span><br><span class="line">		指明虚拟主机的名称，可以跟多个由空白字符分隔的字符串</span><br><span class="line">		支持*通配任意字符长度、支持~起始的字符做正则表达式模式匹配</span><br><span class="line">		匹配机制：首先是字符串精确匹配，然后是左侧匹配，然后是右侧匹配，最后是正则匹配</span><br><span class="line">	<span class="comment">#设置root就说明是正向服务器</span></span><br><span class="line">	root /path;</span><br><span class="line">	<span class="comment">#设置proxy_pass说明是反向代理服务器，此时root无效</span></span><br><span class="line">	proxy_pass http://ip;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">#在keep_alive模式下是否启用nodelay选项，用于处理用户请求资源过小时是否组合多个资源发送</span></span><br><span class="line">tcp_nodelay on | off;</span><br><span class="line"><span class="comment">#在sendfile模式下是否启用nopush选项。用于一次性将整个file(包括头部)放在一个packet中发送过去。</span></span><br><span class="line">tcp_nopush on | off;</span><br><span class="line"><span class="comment">#动态资源是否直接在内存空间发送而不经过用户空间</span></span><br><span class="line">sendfile on | off;</span><br></pre></td></tr></table></figure>
+
+<h6 id="路径配置"><a href="#路径配置" class="headerlink" title="路径配置"></a>路径配置</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#设置web路径映射，用于指定本地文件系统上的资源路径；可以用在http、server、location、if in location</span></span><br><span class="line">root</span><br><span class="line"></span><br><span class="line"><span class="comment">#根据不同的url进行更详细的设置。nginx会根据用户请求的url来检查定义的所有location，并找出最佳匹配应用。</span></span><br><span class="line">location [ = | ~ | ~* |^~ ] url &#123;...&#125;</span><br><span class="line">	=：对url精确匹配</span><br><span class="line">	~：对url正则匹配，区分字符大小写</span><br><span class="line">	~*：对url正则匹配，不区分字符大小写</span><br><span class="line">	^~：对url左半部分做匹配检查，不区分字符大小写</span><br><span class="line">	不带符号：匹配起始于此url的所有url</span><br><span class="line">	优先级：=、^~、~、~/~*、不带符号</span><br><span class="line"></span><br><span class="line"><span class="comment">#定义路径别名，仅用于location</span></span><br><span class="line"><span class="built_in">alias</span> path;</span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">location中使用root指令和<span class="built_in">alias</span>指令的意义不同，root给定的路径相当于location中url左侧的/；而<span class="built_in">alias</span>相当于右侧/。</span><br><span class="line"></span><br><span class="line"><span class="comment">#设置默认资源，定义于http、server、location</span></span><br><span class="line">index file...;</span><br><span class="line"></span><br><span class="line"><span class="comment">#自定义特定错误码的错误页</span></span><br><span class="line">error_page code... [=[response]] url;</span><br><span class="line"></span><br><span class="line"><span class="comment">#</span></span><br><span class="line">try_files file... url;</span><br></pre></td></tr></table></figure>
+
+<h6 id="客户端请求配置"><a href="#客户端请求配置" class="headerlink" title="客户端请求配置"></a>客户端请求配置</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#设定保持连接的超时时长，0表示禁止长连接，默认为75s</span></span><br><span class="line">keepalive_timeout time;</span><br><span class="line"><span class="comment">#一次长连接上所允许请求的最大资源数，默认为100</span></span><br><span class="line">keepalive_requests number;</span><br><span class="line"><span class="comment">#对哪种浏览器禁用长连接</span></span><br><span class="line">keepalive_disable none | browser...;</span><br><span class="line"><span class="comment">#向客户端发送响应报文的超时时长，当客户端突然断线时，服务器会重复写，这就是两次重复写的间隔时长</span></span><br><span class="line">send_timeout time</span><br><span class="line"><span class="comment">#用于接收客户端请求报文的body部分的缓冲区大小；默认为16k，超出此大小时将其暂存到client_body_temp_path指令所定义的位置</span></span><br><span class="line">client_body_buffer_size size;</span><br><span class="line"><span class="comment">#设定用于存储客户端请求报文的body部分的临时存储路径及其子目录结构和数量</span></span><br><span class="line">client_body_temp_path [level1 [level2 [level3]]];</span><br><span class="line">	client_body_temp_path path /var/tmp/client_body 2 1 1</span><br><span class="line">		1：表示用一位16进制数表示一级子目录</span><br><span class="line">		2：表示用2位16进制文件表示二级子目录</span><br><span class="line">		2：表示用2位16进制文件表示三级子目录</span><br></pre></td></tr></table></figure>
+
+<h6 id="客户端限制配置"><a href="#客户端限制配置" class="headerlink" title="客户端限制配置"></a>客户端限制配置</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#限制响应给客户端的传输速率，0表示无限制，单位bytes/second</span></span><br><span class="line">limit_rate rate;</span><br><span class="line"><span class="comment">#限制对指定的请求方法之外的其他方法</span></span><br><span class="line">limit_except method...&#123;...&#125;</span><br></pre></td></tr></table></figure>
+
+<h6 id="文件操作优化"><a href="#文件操作优化" class="headerlink" title="文件操作优化"></a>文件操作优化</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#是否启用异步io功能</span></span><br><span class="line">aio on | off | threads[=pool];</span><br><span class="line"><span class="comment">#是否启用O_DIRECT标记</span></span><br><span class="line">directio size | off;</span><br><span class="line"><span class="comment">#是否打开nginx缓存功能，可以缓存文件描述符、文件大小、最后一次修改时间、打开的目录结构、没有找到或者没有权限访问的文件的相关信息</span></span><br><span class="line">open_file_cache off | max=N [inactive=time];</span><br><span class="line">	max=N：可缓存的缓存项上限；达到上限后会使用LRU算法实现缓存管理</span><br><span class="line">	inactive=time：缓存项的非活动时长，小于此处时间未被命中或者命中次数少于open_file_cache_min_use指定的次数的缓存项即为非活动项。</span><br><span class="line"><span class="comment">#缓存有效性检查频率，默认60s</span></span><br><span class="line">open_file_cache_valid time;</span><br><span class="line"><span class="comment">#在open_file_cache指令的inactive指定时长内，至少被命中多少次的可以被归为活动项</span></span><br><span class="line">open_file_cache_min_uses number;</span><br><span class="line"><span class="comment">#是否缓存查找时发生错误的文件信息</span></span><br><span class="line">open_file_cache_errors on | off;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="重要模块"><a href="#重要模块" class="headerlink" title="重要模块"></a>重要模块</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#实现基于ip的访问控制</span></span><br><span class="line">ngx_http_access_module</span><br><span class="line">	allow address | CIDR | unix | all;</span><br><span class="line">	deny address | CIDR | unix | all;</span><br><span class="line"></span><br><span class="line"><span class="comment">#实现基于用户的访问控制，使用basic机制进行用户认证</span></span><br><span class="line">ngx_http_auth_basic_module模块</span><br><span class="line">	auth_basic string | off;</span><br><span class="line">	auth_basic_user_file file;</span><br><span class="line">		location /admin/ &#123;</span><br><span class="line">			<span class="built_in">alias</span> /webapps/app1/data;</span><br><span class="line">			auth_basic <span class="string">"Admin Area"</span>;</span><br><span class="line">			auth_basic_user_file /etc/nginx/.ngxpasswd;</span><br><span class="line">			<span class="comment">#密码使用htpasswd命令实现</span></span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">#用于输出nginx的基本状态信息</span></span><br><span class="line">ngx_http_stub_status_module</span><br><span class="line">	location /basic_status&#123;</span><br><span class="line">		stub_satus;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line"><span class="comment">#用于输出日志</span></span><br><span class="line">ngx_http_log_module</span><br><span class="line">	log_format name string...</span><br><span class="line">	access_log path [format [buffer=size] [gzip[=level]] [flush=time] [<span class="keyword">if</span>=condition]];</span><br><span class="line">	<span class="comment">#可以在location中设置不记录指定页面的日志</span></span><br><span class="line">	access_log off;</span><br><span class="line">	open_log_file_cache max=N [inactive=time] [min_uses=N] [valid=time];</span><br><span class="line">	open_log_file_cache off;</span><br><span class="line">		max：缓存的最大文件描述符数量</span><br><span class="line">		min_uses：在inactive指定的时长内访问大于等于此值被当作活动想</span><br><span class="line">		inactive：非活动时长</span><br><span class="line">		valid：验证是否为活动项的时间间隔</span><br><span class="line">		</span><br><span class="line"><span class="comment">#gzip压缩</span></span><br><span class="line">ngx_http_gzip_module</span><br><span class="line">	gzip on | off;</span><br><span class="line">	<span class="comment">#压缩比</span></span><br><span class="line">	gzip_comp_level level;</span><br><span class="line">	<span class="comment">#哪些浏览器不压缩，需要禁止</span></span><br><span class="line">	gzip_disable regex...;</span><br><span class="line">	<span class="comment">#允许压缩的最小长度</span></span><br><span class="line">	gzip_min_length length;</span><br><span class="line">	<span class="comment">#支持实现压缩功能时为其配置的缓冲区数量和每个缓冲区的大小</span></span><br><span class="line">	gzip_buffers number size;</span><br><span class="line">	<span class="comment">#作为代理服务器接收到被代理服务器的响应报文时，在何种条件下启用压缩功能</span></span><br><span class="line">	gzip_proxied off | expired | no-cache | no-store</span><br><span class="line">		off：不启用</span><br><span class="line">	<span class="comment">#压缩过滤器，只对指定mime压缩</span></span><br><span class="line">	gzip_types mime-type;</span><br><span class="line">	</span><br><span class="line"><span class="comment">#https配置，只能配置在一个ip上，监听tcp/443端口</span></span><br><span class="line">ngx_http_ssl_module</span><br><span class="line">	ssl on | off;</span><br><span class="line">	<span class="comment">#当前虚拟主机使用的PEM格式证书</span></span><br><span class="line">	ssl_certificate file;</span><br><span class="line">	<span class="comment">#当前主机上与其证书相匹配的私钥</span></span><br><span class="line">	ssl_certificate_key file;</span><br><span class="line">	<span class="comment">#ssl协议版本</span></span><br><span class="line">	ssl_protocols [TLSv1.2];</span><br><span class="line">	<span class="comment">#ssl会话缓存</span></span><br><span class="line">	ssl_session_cache off | nono | [<span class="built_in">builtin</span>[:size]] [shared:name:size];</span><br><span class="line">		<span class="built_in">builtin</span>[:size]：使用openssl内建的缓存，此缓存为每worker进程私有</span><br><span class="line">		[shared:name:size]：在各worker之间使用一个共享的缓存</span><br><span class="line">	<span class="comment">#客户端一侧连接可以服用ssl cache中缓存的ssl有效时长</span></span><br><span class="line">	ssl_session_timeout time;</span><br><span class="line">	</span><br><span class="line"><span class="comment">#rewrite模块，主要是对请求的url进行替换</span></span><br><span class="line">ngx_http_rewrite_module</span><br><span class="line"><span class="comment">#将客户端请求根据regex匹配后进行修改/重定向</span></span><br><span class="line">rewrite regex replacement [flag]</span><br><span class="line">	flag：</span><br><span class="line">		last：在服务器端实现，匹配修改后再从头开始匹配所有的rewrite</span><br><span class="line">		<span class="built_in">break</span>：在服务器端实现，匹配修改后直接跳到rewrite后开始执行</span><br><span class="line">		redirect：在客户端实现，服务器收到请求后匹配到将修改后的url发给客户端的浏览器，由其再次访问，返回的是302状态码</span><br><span class="line">		permanent：同上，但是返回的是301状态码</span><br><span class="line">		<span class="comment">#举例</span></span><br><span class="line">		<span class="comment">#将对png的请求全部换为jpg请求</span></span><br><span class="line">		rewrite /(.*)\.png$ /<span class="variable">$1</span>.jpg</span><br><span class="line">		<span class="comment">#所有请求改成https请求</span></span><br><span class="line">		rewrite /(.*)$ https://www.dqy.io/<span class="variable">$1</span></span><br><span class="line"><span class="comment">#不处理，直接返回状态码或URL给客户端</span></span><br><span class="line"><span class="built_in">return</span> code [text];</span><br><span class="line"><span class="built_in">return</span> code URL;</span><br><span class="line"><span class="built_in">return</span> URL;</span><br><span class="line"><span class="comment">#是否将重写记录日志中</span></span><br><span class="line">rewrite_log on | off;</span><br><span class="line"><span class="comment">#引入一个新的配置，条件满足时执行，server、location中定义</span></span><br><span class="line"><span class="keyword">if</span>(condition)&#123;...&#125;</span><br><span class="line">	比较操作符：</span><br><span class="line">		==</span><br><span class="line">		!=</span><br><span class="line">		~：正则匹配，区分大小写</span><br><span class="line">		~*：不区分大小写的正则匹配</span><br><span class="line">		!~：不匹配，区分大小写</span><br><span class="line">		!~*：不匹配，不区分大小写</span><br><span class="line">		-e,!-e：文件是否存在</span><br><span class="line">		-f,!-f：是否是文件</span><br><span class="line">		-d,!-d：是否是目录</span><br><span class="line">		-x,!-x：是否可执行</span><br><span class="line">		</span><br><span class="line"><span class="comment">#引用相关模块，可以防盗链</span></span><br><span class="line">ngx_http_referer_module</span><br><span class="line">	valid_referers none | blocked | server_name | string...</span><br><span class="line">		none：请求报文没有首部</span><br><span class="line">		blocked：请求报文的referer首部没有值，可能别防火墙删除</span><br><span class="line">		server_names：可以指定主机名</span><br><span class="line">			arbitrary_string：直接字符串，可以使用*通配</span><br><span class="line">			regular expression：正则表达式匹配，使用~开头</span><br><span class="line">		<span class="comment">#举例</span></span><br><span class="line">		valid_referers none block server_names *.dqy.com *.frdqy.com ~\.dqy\.;</span><br><span class="line">		<span class="keyword">if</span>(<span class="variable">$invalid_referer</span>)&#123;</span><br><span class="line">			<span class="built_in">return</span> 403;</span><br><span class="line">		&#125;</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/nginx/" rel="tag"># nginx</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/14/%E6%97%B6%E9%97%B4%E3%80%81%E6%97%A5%E5%BF%97%E3%80%81sudo/" rel="prev" title="时间、日志、sudo">
+      <i class="fa fa-chevron-left"></i> 时间、日志、sudo
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#事件驱动模型"><span class="nav-number">1.</span> <span class="nav-text">事件驱动模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#程序架构"><span class="nav-number">2.</span> <span class="nav-text">程序架构</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#特性"><span class="nav-number">2.1.</span> <span class="nav-text">特性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#功能"><span class="nav-number">2.2.</span> <span class="nav-text">功能</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#环境"><span class="nav-number">2.3.</span> <span class="nav-text">环境</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#安装配置"><span class="nav-number">3.</span> <span class="nav-text">安装配置</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#安装"><span class="nav-number">3.1.</span> <span class="nav-text">安装</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置文件"><span class="nav-number">3.2.</span> <span class="nav-text">配置文件</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#运行必备"><span class="nav-number">3.2.1.</span> <span class="nav-text">运行必备</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#性能优化"><span class="nav-number">3.2.2.</span> <span class="nav-text">性能优化</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#调试相关"><span class="nav-number">3.2.3.</span> <span class="nav-text">调试相关</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#事件驱动"><span class="nav-number">3.2.4.</span> <span class="nav-text">事件驱动</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#http相关"><span class="nav-number">3.2.5.</span> <span class="nav-text">http相关</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#套接字配置"><span class="nav-number">3.2.5.1.</span> <span class="nav-text">套接字配置</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#路径配置"><span class="nav-number">3.2.5.2.</span> <span class="nav-text">路径配置</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#客户端请求配置"><span class="nav-number">3.2.5.3.</span> <span class="nav-text">客户端请求配置</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#客户端限制配置"><span class="nav-number">3.2.5.4.</span> <span class="nav-text">客户端限制配置</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#文件操作优化"><span class="nav-number">3.2.5.5.</span> <span class="nav-text">文件操作优化</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#重要模块"><span class="nav-number">4.</span> <span class="nav-text">重要模块</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">45</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
