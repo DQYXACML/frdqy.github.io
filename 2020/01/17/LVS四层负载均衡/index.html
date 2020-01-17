@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="概念Cluster：计算机集合，为解决某个特定问题组合起来形成的单个系统">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LVS四层负载均衡">
+<meta property="og:url" content="http://yoursite.com/2020/01/17/LVS%E5%9B%9B%E5%B1%82%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="概念Cluster：计算机集合，为解决某个特定问题组合起来形成的单个系统">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-17T10:12:13.000Z">
+<meta property="article:modified_time" content="2020-01-17T10:12:57.112Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="lvs">
+<meta property="article:tag" content="负载均衡">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/17/LVS%E5%9B%9B%E5%B1%82%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>LVS四层负载均衡 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">47</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">2</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">33</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/17/LVS%E5%9B%9B%E5%B1%82%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          LVS四层负载均衡
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-17 18:12:13 / 修改时间：18:12:57" itemprop="dateCreated datePublished" datetime="2020-01-17T18:12:13+08:00">2020-01-17</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p>Cluster：计算机集合，为解决某个特定问题组合起来形成的单个系统</p>
+<a id="more"></a>
+<h4 id="系统扩展方式"><a href="#系统扩展方式" class="headerlink" title="系统扩展方式"></a>系统扩展方式</h4><p>Scale UP：向上扩展，即增加单个服务器容量</p>
+<p>Scale OUT：向外扩展，即增加服务器数量(Cluster)</p>
+<h4 id="会话保持"><a href="#会话保持" class="headerlink" title="会话保持"></a>会话保持</h4><p>由于使用负载均衡后，用户的请求会被负载均衡器分配到不同的后端服务器中，那么如何记录用户的会话身份就显得很重要。主要有如下三种方式：</p>
+<ul>
+<li>session sticky：每个用户绑定固定的后端服务器，可以根据源ip或者cookie来绑定</li>
+<li>session replication：即将每个后端主机的session信息互相同步</li>
+<li>session server：采用一个固定的session服务器专门保存会话信息</li>
+</ul>
+<h4 id="Linux-Cluster类型"><a href="#Linux-Cluster类型" class="headerlink" title="Linux Cluster类型"></a>Linux Cluster类型</h4><p>LB：Load Balanceing，负载均衡</p>
+<p>HA：High Availability，高可用；A=MTBF/(MTBF+MTTR)。(平均无故障时间)/(平均无故障时间+平均修复时间)</p>
+<p>HP：High performance，高性能</p>
+<p>分布式存储：类似于集群概念。将客户端请求通过一个服务器分发给多个服务器，其中起分发功能的服务器叫做元数据服务器，它保存各个数据在数据服务器的位置，即只存储数据的元信息。数据服务器负责真正存储数据，且为了安全一份数据通常在两个不同的数据服务器之间做冗余。另外，如果用户请求一个大文件，且请求量很大，可以将该大文件切片并放在不同的数据服务器上，一次发给用户即可。该结构模型类似文件系统模型。</p>
+<p>分布式计算：将一个单一大问题分隔成数个小问题来解决。例如处理100亿条日志，需要提取访问量前10的日志信息，则可以根据服务器数量，将总体分隔成多个部分进行分开计算，再整合，再计算，这就叫分布式计算。</p>
+<h5 id="硬件"><a href="#硬件" class="headerlink" title="硬件"></a>硬件</h5><p>F5的Big-ip；Citrix的Netscaler；A10的A10</p>
+<h5 id="软件"><a href="#软件" class="headerlink" title="软件"></a>软件</h5><p>传输层(DPORT)：</p>
+<ul>
+<li>lvs(Linux Virtual Server)</li>
+<li>nginx(stream模块)</li>
+<li>haproxy(mode tcp)</li>
+</ul>
+<p>应用层(自定义请求模型)：</p>
+<ul>
+<li>http：nginx、httpd、haproxy</li>
+<li>fastcgi：nginx、httpd</li>
+</ul>
+<h3 id="LVS"><a href="#LVS" class="headerlink" title="LVS"></a>LVS</h3><p>Linux virtual server</p>
+<h4 id="术语"><a href="#术语" class="headerlink" title="术语"></a>术语</h4><p>它是工作在传输层的内核软件，也叫四层路由器。它根据请求报文的目标IP和目标协议及端口将其转发至某RealServer(RS)，根据调度算法来挑选RS。</p>
+<p>VS：虚拟主机也叫Director，即用于调度分发客户端请求的服务器，也叫负载均衡器</p>
+<p>RS：真实服务器，即用于处理客户端请求的服务器</p>
+<p>ipvsadm：lvs的用户空间命令行工具，规则管理工具，用于管理集群服务及RS</p>
+<p>ipvs：lvs工作于内核空间的INPUT上的一个框架</p>
+<p>CIP：客户端的IP</p>
+<p>VIP：VS用于响应客户端请求的IP</p>
+<p>DIP：VS用于响应RS的IP</p>
+<p>RIP：RS的IP</p>
+<h4 id="类型"><a href="#类型" class="headerlink" title="类型"></a>类型</h4><h5 id="lvs-nat"><a href="#lvs-nat" class="headerlink" title="lvs-nat"></a>lvs-nat</h5><p>修改请求报文的目标IP和端口，适用于多目标的DNAT</p>
+<ul>
+<li>RIP和DIP必须处于同一IP网络，且应该使用私网地址；RS网关指向DIP</li>
+<li>请求报文和响应报文都必须经由Director转发；Director可能成为系统瓶颈</li>
+<li>支持端口映射，可修改请求报文的目标PORT</li>
+<li>VS即Director必须是Linux系统，RS可以是任何系统</li>
+</ul>
+<h5 id="lvs-dr"><a href="#lvs-dr" class="headerlink" title="lvs-dr"></a>lvs-dr</h5><p>不修改IP和端口，而修改MAC地址。即为请求报文重新生成一个MAC首部进行转发，源MAC是DIP所在的接口的MAC，目标MAC是挑出的RS的RIP所在接口的MAC地址。</p>
+<ul>
+<li>确保前端路由器将目标IP为VIP的请求报文发往Director<ul>
+<li>法一：在前端网关做静态绑定，但不灵活。</li>
+<li>法二：在RS上使用arptables做MAC访问控制</li>
+<li>法三：在RS上修改内核参数以限制arp通告及应答级别(arp_announce、arp_ignore)<ul>
+<li>arp_announce：默认0，表示在接入网络时把本机所有接口的所有信息向每个接口上的网络进行通告；1表示尽量避免向非直连网络进行通告；2表示避免向非本网络通告。</li>
+<li>arp_ignore：默认0，表示可使用本地任意接口上配置的任意地址进行响应；1表示尽在请求的目标ip配置在本地主机的接收请求报文的接口上时才给予响应。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>RS的RIP可以使用私网地址，也可使用公网地址；RIP与DIP在同一IP网络；RIP网关不能指向DIP，以确保响应报文不经由Director</li>
+<li>RS跟Director在同一物理网络(同一交换机，不能隔路由器)</li>
+<li>请求报文要经由Director，但响应报文不能经由Director，而是经由RS直接发往client</li>
+<li>不支持端口映射</li>
+</ul>
+<h5 id="lvs-tun"><a href="#lvs-tun" class="headerlink" title="lvs-tun"></a>lvs-tun</h5><p>隧道概念，不修改请求报文的IP首部(源IP为CIP，目标IP为VIP)，而是在原有请求的IP报文之外新加一个IP首部(源IP为DIP，目标IP为RIP)，之后将报文发往挑选出的RS，最后RS直接响应给客户端(源IP为VIP，目标IP为CIP)。但会引起超出MTU的问题。</p>
+<ul>
+<li>DIP、VIP、RIP都是公网地址</li>
+<li>RS的网关不能指向DIP</li>
+<li>请求报文要经由Director，但响应报文不能经由Director</li>
+<li>不支持端口映射</li>
+<li>RS的OS得支持隧道功能</li>
+</ul>
+<h5 id="lvs-fullnat"><a href="#lvs-fullnat" class="headerlink" title="lvs-fullnat"></a>lvs-fullnat</h5><p>不同于nat，它修改目标IP和源IP(CIP修改为DIP，VIP修改为RIP)</p>
+<ul>
+<li>VIP是公网地址，RIP和DIP是私网地址，且通常不在同一IP网络；因此，RIP的网关不会指向DIP</li>
+<li>RS收到的请求报文源IP是DIP，因此只需响应给DIP；但Director还要将其发往Client</li>
+<li>请求和响应报文都经由Director</li>
+<li>支持端口映射</li>
+<li>此模型默认不支持</li>
+</ul>
+<h5 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h5><p>lvs-nat、lvs-fullnat的请求都经过Director，区别在于nat模型中，RIP的网关要指向DIP；而fullnat的RIP和DIP未必在同一IP网络，但他们要能通信。且nat进修改请求报文的目标ip，而fullnat修改请求报文的源ip和目标ip。</p>
+<p>lvs-dr、lvs-tun的请求报文都经过Director，响应报文都由RS直接发往Client。区别在于dr模型通过封装新的MAC首部实现，通过MAC转发；而tun模型通过在原有的IP报文之外再封装新的IP实现转发，支持远距离通信。</p>
+<h4 id="调度方法"><a href="#调度方法" class="headerlink" title="调度方法"></a>调度方法</h4><p>根据调度时是否考虑各RS当前的负载状态，可分为静态方法和动态方法两种。</p>
+<h5 id="静态方法"><a href="#静态方法" class="headerlink" title="静态方法"></a>静态方法</h5><p>仅根据算法本身进行调度。</p>
+<ul>
+<li>RR：roundrobin，轮询</li>
+<li>WRR：weighted RR，加权轮询，即将RS虚拟出多个，把个数作为权重</li>
+<li>SH：Source Hashing，实现session sticky，源ip地址hash；在Director内存中维护一张hash表，客户端IP和RS的IP一一对应。(第一次请求时使用WRR并记录源地址hash和对应RS的IP)。缺点是当RS挂掉时对应的客户端的session也会丢失。</li>
+<li>DH：Destination Hashing，目标地址hash，将发往同一个目标地址的请求始终转发至第一次挑中的RS，典型使用场景是正向代理缓存场景中的负载均衡。</li>
+</ul>
+<h5 id="动态方法"><a href="#动态方法" class="headerlink" title="动态方法"></a>动态方法</h5><p>主要根据每个RS当前的负载状态进行调度，负载一样再考虑算法本身。负载值(overhead)</p>
+<ul>
+<li>LC：least connection，最少连接<ul>
+<li>overhead=activeconns*256+inactiveconns</li>
+</ul>
+</li>
+<li>WLC：weighted LC，加权最少连接<ul>
+<li>overhead=(activeconns*256+inactiveconns)/weight</li>
+</ul>
+</li>
+<li>SED：shortest Expection Delay，最短期望延迟<ul>
+<li>overhead=(activeconns+1)*256/weight</li>
+</ul>
+</li>
+<li>NQ：Never Queue</li>
+<li>LBLC：Locality-Based LC，动态DH算法</li>
+<li>LBLCR：LBLC with Replication，带复制功能的LBLC</li>
+</ul>
+<h4 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#在Director安装</span></span><br><span class="line">yum install ipvsadm -y</span><br></pre></td></tr></table></figure>
+
+<h4 id="管理集群"><a href="#管理集群" class="headerlink" title="管理集群"></a>管理集群</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#增、改</span></span><br><span class="line">ipvsadm -A|E -t|u|f service-address [-s scheduler] [-p [timeout]]</span><br><span class="line"><span class="comment">#删</span></span><br><span class="line">ipvsadm -D -t|u|f service-address</span><br><span class="line">	service-address：</span><br><span class="line">		-t：TCP协议端口，VIP:TCP_PORT</span><br><span class="line">		-u：UDP协议端口，VIP:UDP_PORT</span><br><span class="line">		-f：firewall MARK，是一个数字</span><br><span class="line">	[-s scheduler]：指定集群调度算法，默认为WLC</span><br></pre></td></tr></table></figure>
+
+<h4 id="管理集群的RS"><a href="#管理集群的RS" class="headerlink" title="管理集群的RS"></a>管理集群的RS</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#增、改</span></span><br><span class="line">ipvsadm -a|e -t|u|f service-address [-g|i|m] [-w weight]</span><br><span class="line"><span class="comment">#删</span></span><br><span class="line">ipvsadm -d -t|u|f service-address -r server-address</span><br><span class="line">	server-address：</span><br><span class="line">		rip[:port]</span><br><span class="line">	-g：gateway，dr类型</span><br><span class="line">	-i：ipip，tun类型</span><br><span class="line">	-m：masquerade，nat类型</span><br></pre></td></tr></table></figure>
+
+<h4 id="删除和查看"><a href="#删除和查看" class="headerlink" title="删除和查看"></a>删除和查看</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#删除</span></span><br><span class="line">ipvsadm -C</span><br><span class="line"><span class="comment">#查看</span></span><br><span class="line">ipvsadm -L|l [options]</span><br><span class="line">	--numeric,-n：数字格式ip地址和端口</span><br><span class="line">	--exact；精确显示</span><br><span class="line">	--connection,-c：查看具体连接信息，即哪些请求被转发到哪些RS</span><br><span class="line">	--stats：统计数据</span><br><span class="line">		conns：连接数</span><br><span class="line">		InPkts：入栈报文数量</span><br><span class="line">		OutPkts：出栈报文数量</span><br><span class="line">		InBytes：入栈字节数</span><br><span class="line">		OutBytes：出栈字节数</span><br><span class="line">	--rate：速率数据</span><br><span class="line">		CPS：每秒建立的连接数</span><br><span class="line">		InPPS：每秒入栈报文数</span><br><span class="line">		OutPPS：每秒出栈报文数</span><br><span class="line">		InBPS：每秒入栈字节数</span><br><span class="line">		OutBPS：每秒出栈字节数</span><br></pre></td></tr></table></figure>
+
+<h4 id="保存和重载"><a href="#保存和重载" class="headerlink" title="保存和重载"></a>保存和重载</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#保存</span></span><br><span class="line">ipvsadm -S &gt; /etc/sysconfig/ipvsadm</span><br><span class="line">ipvsadm-save &gt; /etc/sysconfig/ipvsadm</span><br><span class="line"><span class="comment">#重载</span></span><br><span class="line">ipvsadm -R &lt; /etc/sysconfig/ipvsadm</span><br><span class="line">ipvsadm-restore &lt; /etc/sysconfig/ipvsadm</span><br></pre></td></tr></table></figure>
+
+<h4 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h4><h5 id="NAT集群"><a href="#NAT集群" class="headerlink" title="NAT集群"></a>NAT集群</h5><p>使用nat模型实现集群。一台Director(两块网卡，一个VIP，一个DIP)，两台RS。</p>
+<p>首先配置RS1、RS2，他们ip地址分别为192.168.163.11、192.168.163.12，网关地址为192.168.163.254，该网关地址也是Director的DIP。Director的VIP为一个外网地址(注意Director必须开启核心转发功能)。由此外网主机就可以通过Director的VIP地址访问两台RS.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#创建集群</span></span><br><span class="line">ipvsadm -A -t VIP_address:port -s rr</span><br><span class="line"><span class="comment">#创建集群上的rule</span></span><br><span class="line">ipvsadm -a -t VIP_address:port -r 192.168.163.11 -m</span><br><span class="line">ipvsadm -a -t VIP_address:port -r 192.168.163.12 -m</span><br><span class="line"></span><br><span class="line"><span class="comment">#修改集群调度算法为wrr(加权rr)</span></span><br><span class="line">ipvsadm -E -t VIP_address:port -s wrr</span><br><span class="line"><span class="comment">#修改rule权重</span></span><br><span class="line">ipvsadm -e -t VIP_address:port -r 192.168.163.11 -m -w 2</span><br><span class="line">ipvsadm -e -t VIP_address:port -r 192.168.163.12 -m -w 3</span><br><span class="line"></span><br><span class="line"><span class="comment">#删除一条rule</span></span><br><span class="line">ipvsadm -d -t VIP_address:port -r 192.168.163.1</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意，port根据具体服务选择，比如web服务一般是80端口，telnet就设置23端口即可。不同的端口相互隔离。</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="DR集群"><a href="#DR集群" class="headerlink" title="DR集群"></a>DR集群</h5><p>使用dr模型实现集群。一台Director(一块网卡，只要VIP)，两台RS。RS和Director在同一网段(网关一样)。</p>
+<p>Directory地址设置为172.16.0.99(VIP)，不需要DIP地址。</p>
+<p>两台RS地址设置分别为172.168.0.7(RIP)、172.168.0.8(RIP)</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#设置内核参数，/proc/sys/net/ipv4/conf/</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /proc/sys/net/ipv4/conf/all/arp_ignore</span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /proc/sys/net/ipv4/conf/lo/arp_ignore</span><br><span class="line"><span class="built_in">echo</span> 2 &gt; /proc/sys/net/ipv4/conf/all/arp_announce</span><br><span class="line"><span class="built_in">echo</span> 2 &gt; /proc/sys/net/ipv4/conf/lo/arp_announce</span><br><span class="line"></span><br><span class="line"><span class="comment">#设置RS的另一个ip地址，设置在lo的别名上</span></span><br><span class="line">ifconfig lo:0 172.16.0.99 netmask 255.255.255.255 broadcast 172.16.0.99 up</span><br><span class="line"></span><br><span class="line"><span class="comment">#设置RS的路由条目</span></span><br><span class="line"><span class="comment">#因为需要由RS直接将结果反回给Client，所以设置路由条目，将目的ip为VIP的全部转发经由lo:0来转发，这样发送给Clent的源ip就是VIP，与用户请求的目的IP一样</span></span><br><span class="line">route add -host 172.168.0.99 dev lo:0</span><br><span class="line"></span><br><span class="line"><span class="comment">#设置Director的ip别名</span></span><br><span class="line"><span class="comment">#因为我们设置的VIP是172.16.0.99，即外网Client通过VIP访问，我们需要在与外界通信的物理网卡上配置别名，ip地址改为VIP。</span></span><br><span class="line"><span class="comment">#此处broadcast只是将本网段的广播全都转发给172.16.0.99，正常的ARP仍可以响应</span></span><br><span class="line">ifconfig ens33:0 172.16.0.99 netmask 255.255.255.255 broadcast 172.16.0.99 up</span><br><span class="line"></span><br><span class="line"><span class="comment">#Director添加集群</span></span><br><span class="line">ipvsadm -A -t 172.168.0.99:80 -s rr</span><br><span class="line"><span class="comment">#创建集群上的rule</span></span><br><span class="line">ipvsadm -a -t 172.168.0.99:80 -r 172.168.0.7 -m</span><br><span class="line">ipvsadm -a -t 172.168.0.99:80 -r 172.168.0.8 -m</span><br></pre></td></tr></table></figure>
+
+<h5 id="防火墙标记"><a href="#防火墙标记" class="headerlink" title="防火墙标记"></a>防火墙标记</h5><p>使用iptables在请求进入Director的Prerouting时加不同的防火墙标记，当请求经由input链时按照lvs根据防火墙标记设计的规则就可以实现对不同的端口的访问全部绑定一起进行调度。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#将80和443端口进行iptables打包</span></span><br><span class="line">iptables -t mangle -A PREROUTING -d 172.16.0.99 -p tcp -m multiport --dports 80,443 -j MARK --<span class="built_in">set</span>-mark 3</span><br><span class="line"><span class="comment">#根据mark添加集群</span></span><br><span class="line">ipvsadm -A -f 3 -s rr</span><br><span class="line"><span class="comment">#添加RS</span></span><br><span class="line">ipvsadm -a -f 3 -r 172.16.0.7 -g</span><br><span class="line">ipvsadm -a -f 3 -r 172.16.0.8 -g</span><br></pre></td></tr></table></figure>
+
+<h5 id="会话保持-1"><a href="#会话保持-1" class="headerlink" title="会话保持"></a>会话保持</h5><p>使用ipvsadm的-p选项实现调度算法之上的会话绑定。即客户端第一次访问时仍然按照选定的算法来调度，但是同一客户端之后的访问都会被绑定到第一次调度的主机上。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#在上面基础上修改集群，默认360s</span></span><br><span class="line">ipvsadm -E -f 3 -s rr -p</span><br></pre></td></tr></table></figure>
+
+<h5 id="全端口绑定"><a href="#全端口绑定" class="headerlink" title="全端口绑定"></a>全端口绑定</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#端口设0表示全端口转发，且此时必须设置-p选项</span></span><br><span class="line">ipvsadm -A -t 172.16.0.99:0 -s rr -p</span><br><span class="line">ipvsadm -a -t 172.16.0.99:0 -r 172.16.0.7 -g</span><br><span class="line">ipvsadm -a -t 172.16.0.99:0 -r 172.16.0.8 -g</span><br></pre></td></tr></table></figure>
+
+<h4 id="存在问题"><a href="#存在问题" class="headerlink" title="存在问题"></a>存在问题</h4><ul>
+<li>Director存在单点故障问题(SPoF)，解决方法使用高可用集群实现。<ul>
+<li>keepalived，它既可以冗余Director也可以检测RS的生命状态</li>
+<li>heartbeat/corosync</li>
+</ul>
+</li>
+<li>某RS不可用，Director仍然会调度请求该RS，可以通过网络层(ping)、传输层(端口探测)、应用层检测(请求某关键资源)<ul>
+<li>keeplived</li>
+<li>ldirectord</li>
+</ul>
+</li>
+</ul>
+<h4 id="Idirectord"><a href="#Idirectord" class="headerlink" title="Idirectord"></a>Idirectord</h4><p>工作在Director主机上，对后端主机进行健康检测并修改Director的规则。启用ldirectord后，会根据配置文件需要检测的RS自动添加Director的规则条目，对无法访问的将自动删除。</p>
+<p>由于ldirectord不在官方仓库和epel仓库中，因此要使用rpm安装。</p>
+<h5 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#超时时长</span></span><br><span class="line">checktimeout=time</span><br><span class="line"><span class="comment">#每隔多久检测一次</span></span><br><span class="line">checkinterval=time</span><br><span class="line"><span class="comment">#所有RS全挂使用什么来处理请求</span></span><br><span class="line">fallback=127.0.0.1:80</span><br><span class="line"><span class="comment">#是否自动重载配置文件</span></span><br><span class="line">autoreload=yes</span><br><span class="line"><span class="comment">#日志文件</span></span><br><span class="line">logfile=<span class="string">""</span></span><br><span class="line"><span class="comment">#通知邮箱</span></span><br><span class="line">emailalert=<span class="string">""</span></span><br><span class="line"><span class="comment">#通知频率</span></span><br><span class="line">emailalertfreq=<span class="string">""</span></span><br><span class="line"><span class="comment">#定义VIP，也可以根据防火墙标签定义</span></span><br><span class="line">virtual VIP_ADDRESS:PORT</span><br><span class="line">	<span class="comment">#定义RIP</span></span><br><span class="line">	<span class="built_in">read</span>=RIP:PORT gate(dr模型)</span><br><span class="line">	<span class="comment">#指明该集群应用层协议</span></span><br><span class="line">	service=http</span><br><span class="line">	<span class="comment">#指明检测主页</span></span><br><span class="line">	request=<span class="string">"index.html"</span></span><br><span class="line">	<span class="comment">#请求主页包含关键字</span></span><br><span class="line">	receive=<span class="string">"Test Page"</span></span><br><span class="line">	<span class="comment">#向指定虚拟主机发送请求</span></span><br><span class="line">	virtualhost=www.x.y.z</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/lvs/" rel="tag"># lvs</a>
+              <a href="/tags/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/" rel="tag"># 负载均衡</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/15/nginx%E5%9F%BA%E6%9C%AC%E9%85%8D%E7%BD%AE/" rel="prev" title="nginx基本配置">
+      <i class="fa fa-chevron-left"></i> nginx基本配置
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#概念"><span class="nav-number">1.</span> <span class="nav-text">概念</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#系统扩展方式"><span class="nav-number">1.1.</span> <span class="nav-text">系统扩展方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#会话保持"><span class="nav-number">1.2.</span> <span class="nav-text">会话保持</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Linux-Cluster类型"><span class="nav-number">1.3.</span> <span class="nav-text">Linux Cluster类型</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#硬件"><span class="nav-number">1.3.1.</span> <span class="nav-text">硬件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#软件"><span class="nav-number">1.3.2.</span> <span class="nav-text">软件</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LVS"><span class="nav-number">2.</span> <span class="nav-text">LVS</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#术语"><span class="nav-number">2.1.</span> <span class="nav-text">术语</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#类型"><span class="nav-number">2.2.</span> <span class="nav-text">类型</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#lvs-nat"><span class="nav-number">2.2.1.</span> <span class="nav-text">lvs-nat</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#lvs-dr"><span class="nav-number">2.2.2.</span> <span class="nav-text">lvs-dr</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#lvs-tun"><span class="nav-number">2.2.3.</span> <span class="nav-text">lvs-tun</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#lvs-fullnat"><span class="nav-number">2.2.4.</span> <span class="nav-text">lvs-fullnat</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#总结"><span class="nav-number">2.2.5.</span> <span class="nav-text">总结</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#调度方法"><span class="nav-number">2.3.</span> <span class="nav-text">调度方法</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#静态方法"><span class="nav-number">2.3.1.</span> <span class="nav-text">静态方法</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#动态方法"><span class="nav-number">2.3.2.</span> <span class="nav-text">动态方法</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#安装"><span class="nav-number">2.4.</span> <span class="nav-text">安装</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#管理集群"><span class="nav-number">2.5.</span> <span class="nav-text">管理集群</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#管理集群的RS"><span class="nav-number">2.6.</span> <span class="nav-text">管理集群的RS</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#删除和查看"><span class="nav-number">2.7.</span> <span class="nav-text">删除和查看</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#保存和重载"><span class="nav-number">2.8.</span> <span class="nav-text">保存和重载</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#实例"><span class="nav-number">2.9.</span> <span class="nav-text">实例</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#NAT集群"><span class="nav-number">2.9.1.</span> <span class="nav-text">NAT集群</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#DR集群"><span class="nav-number">2.9.2.</span> <span class="nav-text">DR集群</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#防火墙标记"><span class="nav-number">2.9.3.</span> <span class="nav-text">防火墙标记</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#会话保持-1"><span class="nav-number">2.9.4.</span> <span class="nav-text">会话保持</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#全端口绑定"><span class="nav-number">2.9.5.</span> <span class="nav-text">全端口绑定</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#存在问题"><span class="nav-number">2.10.</span> <span class="nav-text">存在问题</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Idirectord"><span class="nav-number">2.11.</span> <span class="nav-text">Idirectord</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#配置文件"><span class="nav-number">2.11.1.</span> <span class="nav-text">配置文件</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">33</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">47</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
