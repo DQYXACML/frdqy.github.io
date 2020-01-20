@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="基本概念有效性机制过期时间 expires：定义过期的绝对时间  Cache-Control：maxage&#x3D;number，表示缓存number秒时间，是相对时长  Cache-Control：s-maxage&#x3D;number，同上">
+<meta property="og:type" content="article">
+<meta property="og:title" content="varnish详解">
+<meta property="og:url" content="http://yoursite.com/2020/01/20/varnish%E8%AF%A6%E8%A7%A3/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="基本概念有效性机制过期时间 expires：定义过期的绝对时间  Cache-Control：maxage&#x3D;number，表示缓存number秒时间，是相对时长  Cache-Control：s-maxage&#x3D;number，同上">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2020/01/20/varnish%E8%AF%A6%E8%A7%A3/%E6%9E%B6%E6%9E%84.jpg">
+<meta property="og:image" content="http://yoursite.com/2020/01/20/varnish%E8%AF%A6%E8%A7%A3/TIM%E5%9B%BE%E7%89%8720200120154142.png">
+<meta property="article:published_time" content="2020-01-20T10:56:28.000Z">
+<meta property="article:modified_time" content="2020-01-20T11:01:12.048Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="varnish">
+<meta property="article:tag" content="缓存">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/01/20/varnish%E8%AF%A6%E8%A7%A3/%E6%9E%B6%E6%9E%84.jpg">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/20/varnish%E8%AF%A6%E8%A7%A3/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>varnish详解 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">50</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">2</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">35</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/20/varnish%E8%AF%A6%E8%A7%A3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          varnish详解
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-20 18:56:28 / 修改时间：19:01:12" itemprop="dateCreated datePublished" datetime="2020-01-20T18:56:28+08:00">2020-01-20</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h3><h4 id="有效性机制"><a href="#有效性机制" class="headerlink" title="有效性机制"></a>有效性机制</h4><h5 id="过期时间"><a href="#过期时间" class="headerlink" title="过期时间"></a>过期时间</h5><ul>
+<li><p>expires：定义过期的绝对时间</p>
+</li>
+<li><p>Cache-Control：maxage=number，表示缓存number秒时间，是相对时长</p>
+</li>
+<li><p>Cache-Control：s-maxage=number，同上</p>
+<a id="more"></a>
+<h5 id="条件式请求"><a href="#条件式请求" class="headerlink" title="条件式请求"></a>条件式请求</h5></li>
+<li><p>Last-Modified/If-Modified-Since，不基于固定时间来缓存，而是每次缓存客户端向上级服务器请求该资源的时间戳，如果没有改变，上级服务器返回304响应码即可。</p>
+</li>
+<li><p>Etag/If-None-Match，基于文件内容的校验码机制，其余同上</p>
+</li>
+</ul>
+<p>通常将上述两种请求方式结合起来使用。第一次访问时客户端缓存在本地，同时设置过期时间，然后后续的请求都根据过期时间来判断是否需要向后端服务器请求。如果没有过期则直接本地缓存响应，如果过期了就使用条件式请求，如果服务器返回304则表示缓存仍未过期，此时重新设置过期时间；如果服务器返回200则表示缓存过期，同时将新的响应缓存下来，也同时设置过期时间。</p>
+<h4 id="缓存相关报文首部"><a href="#缓存相关报文首部" class="headerlink" title="缓存相关报文首部"></a>缓存相关报文首部</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#请求报文</span></span><br><span class="line">cache-request-directive：</span><br><span class="line">	no-cache：不用缓存内容响应</span><br><span class="line">	</span><br><span class="line"><span class="comment">#响应报文，由缓存服务器发送给客户端的报文</span></span><br><span class="line">cache-response-directive：</span><br><span class="line">	public：公共缓存可缓存(私有也可以)</span><br><span class="line">	private：仅私有缓存可缓存</span><br><span class="line">	no-cache：可缓存，但是响应给客户端之前要强制使用条件式请求判断</span><br><span class="line">	no-store：不能存储响应于缓存中</span><br><span class="line">	maxage：设置缓存相对时长</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Varnish"><a href="#Varnish" class="headerlink" title="Varnish"></a>Varnish</h3><h4 id="程序架构"><a href="#程序架构" class="headerlink" title="程序架构"></a>程序架构</h4><p><img src="/2020/01/20/varnish%E8%AF%A6%E8%A7%A3/%E6%9E%B6%E6%9E%84.jpg" alt></p>
+<p>主要由varnishd守护进程组成，它包含如下几个部分</p>
+<ul>
+<li>Manager process进程，即管理进程</li>
+<li>Cache process进程，包含多种类型的线程如accept、worker、expiry、log/stats、storage</li>
+</ul>
+<p>shared memory log，用于统计缓存命中数据和记录日志的进程，有相关进程varnishlog、varnishncsa、varnishstat等</p>
+<p>配置接口：VCL，即定义管理缓存相关设置时需要通过vcl complier编译成c语言，然后把c编译成共享模块，以供Cache进程调用。</p>
+<h4 id="程序环境"><a href="#程序环境" class="headerlink" title="程序环境"></a>程序环境</h4><p>/etc/varnish/varnish.params：配置varnish服务进程的工作特性，例如监听的地址和端口，缓存机制</p>
+<p>/etc/varnish/default.vcl：配置各Child/Cache线程的缓存工作策略</p>
+<p>/usr/bin/varnishd：主程序</p>
+<p>/usr/bin/varnishadm：命令行接口</p>
+<p>/usr/bin/varnishhist等属于统计命中数据和记录日志的程序</p>
+<p>/usr/bin/varnishtest：测试工具</p>
+<p>/usr/sbin/varnish_reload_vcl：vcl配置文件重载程序</p>
+<h4 id="缓存机制"><a href="#缓存机制" class="headerlink" title="缓存机制"></a>缓存机制</h4><p>varnish可以使用基于内存的缓存和磁盘文件缓存</p>
+<ul>
+<li>malloc[,size]：缓存保存在内存中，指明内存大小</li>
+<li>file[,path[,size]]：缓存保存在文件中，指明文件路径和大小</li>
+</ul>
+<h4 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h4><p>varnish自身启动的配置文件</p>
+ <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#/etc/varnish/varnish.params</span></span><br><span class="line"><span class="comment">#启动服务时是否重载VCL配置文件</span></span><br><span class="line">RELOAD_VCL=1</span><br><span class="line"><span class="comment">#默认VCL配置文件</span></span><br><span class="line">VARNISH_VCL_CONF=/etc/varnish/default.vcl</span><br><span class="line"><span class="comment">#Varnish服务的监听端口，一般改为80</span></span><br><span class="line">VARNISH_LISTEN_PORT=80</span><br><span class="line"><span class="comment">#定义远程管理端口和地址</span></span><br><span class="line">VARNISH_ADMIN_LISTEN_ADDRESS=127.0.0.1</span><br><span class="line">VARNISH_ADMIN_LISTEN_PORT=6082</span><br><span class="line"><span class="comment">#上述管理接口远程连接时候需要的密钥文件(客户端和服务端必须一样才可以连接)</span></span><br><span class="line">VARNISH_SECRET_FILE=/etc/varnish/secret</span><br><span class="line"><span class="comment">#使用缓存类型，此处为内存缓存，大小为256M</span></span><br><span class="line">VARNISH_STORAGE=<span class="string">"malloc,256M"</span></span><br><span class="line"><span class="comment">#设置varnish进程的属主和属组</span></span><br><span class="line">VARNISH_USER=varnish</span><br><span class="line">VARNISH_GROUP=varnish</span><br><span class="line"><span class="comment">#运行时修改的参数(和缓存相关的参数都支持运行时修改，否则重启会导致缓存失效)，此处定义的是线程池</span></span><br><span class="line">DAEMON_OPTS=<span class="string">"-p thread_pool_min=5 -p thread_pool_max=500 -p thread_pool_timeout=300"</span></span><br><span class="line">	thread_pool：线程池数量(不超过cpu物理核心数)</span><br><span class="line">	thread_pool_min：每个线程池的最小线程数</span><br><span class="line">	thread_pool_max：每个线程池的最大线程数</span><br><span class="line">	thread_pool_timeout：空闲进程被销毁的超时时长</span><br><span class="line">	thread_queue_limit：每个线程池的后援队列长度</span><br><span class="line">	thread_pool_add_delay：创建线程时的等待时间(一般为0)</span><br><span class="line">	thread_pool_destroy_delay：销毁线程时的等待时间(防止突然有大量请求)</span><br><span class="line">	thread_pool_fail_delay：创建线程失败时隔多久再重试</span><br><span class="line">	send_timeout：varnish发送给客户端的超时时长</span><br><span class="line">	timeout_idle：varnish与客户端保持连接时长</span><br></pre></td></tr></table></figure>
+
+<p>需要缓存的后端服务器相关配置</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#/etc/varnish/default.vcl</span></span><br><span class="line">backend default &#123;</span><br><span class="line">	<span class="comment">#指明后端主机ip和端口</span></span><br><span class="line">	.host = <span class="string">"ip_addr"</span>;</span><br><span class="line">	.port = <span class="string">"80"</span>;</span><br><span class="line">	<span class="comment">#设置连接超时时长</span></span><br><span class="line">	.connect_timeout = 0.5s</span><br><span class="line">	<span class="comment">#设置最大连接数</span></span><br><span class="line">	.max_connections = 50;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="varnishadm"><a href="#varnishadm" class="headerlink" title="varnishadm"></a>varnishadm</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#通过定义在/etc/varnish/varnish.params的管理员ip和端口来进入命令行模式，需要指明密钥文件</span></span><br><span class="line">varnishadm -T 127.0.0.1:6082 -S /etc/varnish/secret</span><br><span class="line">	vcl.load &lt;configname&gt; &lt;filename&gt;：将filename编译成配置文件configname</span><br><span class="line">	vcl.use &lt;configname&gt;：使用configname配置文件</span><br><span class="line">	param.show &lt;param&gt;：显示指定参数</span><br><span class="line">	backend.list：列出反向代理的主机</span><br></pre></td></tr></table></figure>
+
+<h4 id="VCL配置"><a href="#VCL配置" class="headerlink" title="VCL配置"></a>VCL配置</h4><h5 id="基本概念-1"><a href="#基本概念-1" class="headerlink" title="基本概念"></a>基本概念</h5><p>varnish的缓存管理策略。</p>
+<p>vcl是“域”专有类型的配置语言(类似于iptables的hook)。所谓的“域”可以理解为：当用户请求达到缓存服务器时，缓存服务器会有很多的功能模块来对请求进行判断，比如是否需要缓存等；且每个模块都会指明该模块结束后下一个模块是什么，这些模块就叫做”域”，也叫做状态引擎。</p>
+<p>VCL有多个状态引擎，状态之间存在相关性，但状态引擎彼此之间互相隔离；每个状态引擎可使用return(x)指明关联至哪一个下一级引擎；每个状态引擎对应vcl配置文件的一个配置段，以sub定义。</p>
+<h5 id="执行流程"><a href="#执行流程" class="headerlink" title="执行流程"></a>执行流程</h5><p>首先收到用户请求，在查本地缓存前先执行vcl_recv，可以执行一些预处理操作(很多规则在此处定义)。之后执行vcl_hash判断是否本地有缓存，此时有多种情况。如果缓存命中，则可以执行vcl_response，也可以执行vcl_pass到后端处理；如果缓存没命中，可以执行vcl_miss，然后可以直接后端处理或者调用vcl_pass后再到后端处理；如果不是可识别的协议，那么调用vcl_pipe直接传输给后端服务器进行响应。如果需要手动更改缓存项生效或者失效则使用vcl_purge之后会调用vcl_synth并构成响应报文执行vcl_deliver。</p>
+<p>注意，有两个特殊的引擎：</p>
+<ul>
+<li>vcl_init：在所有请求处理之前都要执行的vcl代码；主要用于初始化VMODs</li>
+<li>vcl_finl：所有请求都已经结束，在vcl配置被丢弃时调用；主要用于清理VMODs</li>
+</ul>
+<h5 id="内置变量"><a href="#内置变量" class="headerlink" title="内置变量"></a>内置变量</h5><ul>
+<li><p>req.*：引用由客户端发给varnish的请求报文首部。</p>
+<ul>
+<li>req.http.Cookie：客户端的请求报文中Cookie的值</li>
+<li>req.http.User-Agent：客户端浏览器信息</li>
+<li>req.url：客户端请求的资源</li>
+</ul>
+</li>
+<li><p>bereq.*：引用由varnish发给后端服务器的请求报文的首部。</p>
+<ul>
+<li>bereq.http.HEADERS(User-Agent、Referer等)</li>
+<li>bereq.request：请求方法</li>
+<li>bereq.url：请求的资源</li>
+<li>bereq.proto：请求的协议版本</li>
+<li>bereq.backend：指明要调用的后端主机</li>
+</ul>
+</li>
+<li><p>beresp.*：引用由后端主机响应给varnish的响应报文的首部。</p>
+<ul>
+<li>beresp.http.HEADERS(User-Agent、Referer等)</li>
+<li>beresp.status：响应的状态码</li>
+<li>beresp.backend.name：后端服务器的主机名</li>
+<li>beresp.ttl：后端服务器响应的内容跟的余下可缓存时长</li>
+</ul>
+</li>
+<li><p>resp.*：引用由varnish响应给client的响应报文的首部。</p>
+<ul>
+<li>resp.proto：协议版本</li>
+</ul>
+</li>
+<li><p>obj.*：引用存储在缓存空间中的缓存对象的属性；只读。</p>
+<ul>
+<li>obj.hits：此对象从缓存中命中的次数</li>
+<li>obj.ttl：对象的ttl值</li>
+<li>obj.grace：表示可以接受缓存过期多久，即过期在规定时间内仍然可用</li>
+</ul>
+</li>
+<li><p>server.*：指明后端服务器的ip主机名</p>
+<ul>
+<li>server.ip</li>
+<li>server.hostname</li>
+</ul>
+</li>
+<li><p>client.*：指明客户端的ip</p>
+<ul>
+<li>client.ip</li>
+</ul>
+</li>
+</ul>
+<h5 id="变量定义域"><a href="#变量定义域" class="headerlink" title="变量定义域"></a>变量定义域</h5><p><img src="/2020/01/20/varnish%E8%AF%A6%E8%A7%A3/TIM%E5%9B%BE%E7%89%8720200120154142.png" alt></p>
+<h5 id="缓存实例"><a href="#缓存实例" class="headerlink" title="缓存实例"></a>缓存实例</h5><p>强制对某类资源请求不检查</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#定义在vcl_recv中</span></span><br><span class="line"><span class="comment">#?i表示不区分大小写</span></span><br><span class="line">vcl_recv &#123;</span><br><span class="line">	<span class="keyword">if</span> (req.url ~ <span class="string">"(?i)^/(login|admin)"</span>)&#123;</span><br><span class="line">		<span class="built_in">return</span>(pass);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于特定类型的资源，例如公共的图片，取消其私有标识，并强行设定其可以由varnish缓存的时长</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#定义于fetch中</span></span><br><span class="line">vcl_fetch &#123;</span><br><span class="line">	<span class="comment">#判断是否是可公共缓存，一般有s-maxage标识则表示可公共缓存</span></span><br><span class="line">	<span class="keyword">if</span> (beresp.http.Cache-Control !~ <span class="string">"s-maxage"</span>) &#123;</span><br><span class="line">		<span class="keyword">if</span> (bereq.url ~ <span class="string">"(?i)\.(jpg|png|gif|css|js|jpeg)$"</span>) &#123;</span><br><span class="line">			<span class="built_in">unset</span> beresp.http.Set-Cookie;</span><br><span class="line">			<span class="built_in">set</span> beresp.ttl=3600s;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>将真实的客户端ip传给后端服务器</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#原则放在任何地方都行，但由于要传客户端ip地址，需要放在recv下</span></span><br><span class="line">vcl_recv &#123;</span><br><span class="line">	<span class="keyword">if</span> (req.restart == 0) &#123;</span><br><span class="line">		<span class="keyword">if</span> (req.http.X-Fowarded-For) &#123;</span><br><span class="line">			<span class="built_in">set</span> req.http.X-Forwarded-For = req.http.X-Forwarded-For + <span class="string">","</span> + client.ip;</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="built_in">set</span> req.http.X-Forwarded-For = client.ip;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>purge实现缓存修剪</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#定义访问控制</span></span><br><span class="line">acl purgers &#123;</span><br><span class="line">	<span class="comment">#表示只允许下列规定的ip或网段执行purge</span></span><br><span class="line">	<span class="string">"127.0.0.1"</span>;</span><br><span class="line">	<span class="string">"192.168.0.0"</span>/24;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">#定义在recv中，且放在最前面</span></span><br><span class="line">vcl_recv &#123;</span><br><span class="line">	<span class="keyword">if</span> (req.method == <span class="string">"PURGE"</span>) &#123;</span><br><span class="line">		<span class="keyword">if</span> (!client.ip ~ purgers) &#123;</span><br><span class="line">			<span class="built_in">return</span>(synth(403,<span class="string">"Purging not allowed for "</span> + client.ip));</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="built_in">return</span>(purge);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">#使用curl的-X选项请求页面即可使其缓存失效，用-I查看</span></span><br><span class="line">curl -X PURGE http://192.168.163.131/index.html</span><br><span class="line">curl -I PURGE http://192.168.163.131/index.html</span><br></pre></td></tr></table></figure>
+
+<p>ban实现多文件缓存修剪</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#定义访问控制</span></span><br><span class="line">acl baners &#123;</span><br><span class="line">	<span class="comment">#表示只允许下列规定的ip或网段执行ban</span></span><br><span class="line">	<span class="string">"127.0.0.1"</span>;</span><br><span class="line">	<span class="string">"192.168.0.0"</span>/24;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">#手动在varnishadm命令行下执行</span></span><br><span class="line"><span class="comment">#禁止对所有.js结尾的文件的缓存</span></span><br><span class="line">ban req.url ~ .js$</span><br><span class="line"></span><br><span class="line"><span class="comment">#定义在vcl_recv中</span></span><br><span class="line"><span class="keyword">if</span> (req.method == <span class="string">"BAN"</span>) &#123;</span><br><span class="line">	<span class="keyword">if</span> (!client.ip ~ baners) &#123;</span><br><span class="line">		<span class="built_in">return</span>(synth(403,<span class="string">"baning not allowed for "</span> + client.ip));</span><br><span class="line">	&#125;</span><br><span class="line">	ban(<span class="string">"req.http.host == "</span> + req.http.host + <span class="string">"&amp;&amp; req.url == "</span> + req.url);</span><br><span class="line">	<span class="built_in">return</span>(synth(200,<span class="string">"Ban added"</span>));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="代理实例"><a href="#代理实例" class="headerlink" title="代理实例"></a>代理实例</h5><p>代理多台后端主机</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#导入directors模块</span></span><br><span class="line">import directors;</span><br><span class="line"></span><br><span class="line"><span class="comment">#定义多台主机</span></span><br><span class="line">backend one &#123;</span><br><span class="line">	.host = <span class="string">"localhost"</span>;</span><br><span class="line">	.port = <span class="string">"80"</span>;</span><br><span class="line">&#125;</span><br><span class="line">backend two &#123;</span><br><span class="line">	.host = <span class="string">"192.168.163.131"</span>;</span><br><span class="line">	.port = <span class="string">"80"</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">#在vcl_init中初始化多个主机为一组</span></span><br><span class="line">sub vcl_init &#123;</span><br><span class="line">	new varnish = directors.round_robin();</span><br><span class="line">	varnish.add_backend(one);</span><br><span class="line">	varnish.add_backend(two);</span><br><span class="line">	<span class="comment">#可以基于权重定义</span></span><br><span class="line">	new varnish1 = directors.random();</span><br><span class="line">	varnish1.add_backend(one,10);</span><br><span class="line">	varnish1.add_backend(two,5);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">#在vcl_recv中调用定义的组</span></span><br><span class="line">sub vcl_recv &#123;</span><br><span class="line">	<span class="built_in">set</span> req.backend hint = varnish.backend();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>基于cookie绑定不同的主机</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#以hash定义组</span></span><br><span class="line">sub vcl_init &#123;</span><br><span class="line">	new h = directors.hash();</span><br><span class="line">	h.add_backend(one,1);</span><br><span class="line">	h.add_backend(two,1);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">#hash键设定为客户端的cookie</span></span><br><span class="line">sub vcl_recv &#123;</span><br><span class="line">	<span class="built_in">set</span> req.backend_hint = h.backend(req.http.cookie);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="健康检测实例"><a href="#健康检测实例" class="headerlink" title="健康检测实例"></a>健康检测实例</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#定义probe</span></span><br><span class="line">probe www_probe &#123;</span><br><span class="line">	<span class="comment">#用于健康检测的页面，默认为“/”</span></span><br><span class="line">	.url = <span class="string">"/index.html"</span>;</span><br><span class="line">	<span class="comment">#定义多久检测一次</span></span><br><span class="line">	.interval = 1s;</span><br><span class="line">	<span class="comment">#定义响应超时时长</span></span><br><span class="line">	.timeout = 1s;</span><br><span class="line">	<span class="comment">#定义检测几次</span></span><br><span class="line">	.window = 8;</span><br><span class="line">	<span class="comment">#在定义的检测次数中检测需要成功多少次，即8此探测中成功5次则说明健康</span></span><br><span class="line">	.threshold = 5;</span><br><span class="line">	<span class="comment">#期望得到的响应码，默认为200</span></span><br><span class="line">	.expected_response 200;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">#在backend中调用</span></span><br><span class="line">backend one &#123;</span><br><span class="line">	...</span><br><span class="line">	.probe = www_probe;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="日志"><a href="#日志" class="headerlink" title="日志"></a>日志</h4><p>varnishstat</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">varnishstat</span><br><span class="line">	-1：只显示1次</span><br><span class="line">	-l：列出可以显示的所有字段列表</span><br><span class="line">	-f filed：指定只显示哪个字段</span><br><span class="line"><span class="comment">#常用字段</span></span><br><span class="line">MAIN.cache_hit：缓存命中次数</span><br><span class="line">MAIN.client_req：收到的客户端请求数</span><br></pre></td></tr></table></figure>
+
+<p>varnishtop</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">varnishtop</span><br><span class="line">	-1：只显示一次</span><br><span class="line">	-i taglist：只显示有限个标签内容</span><br><span class="line">	-x taglist：排除有限个标签的内容</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/varnish/" rel="tag"># varnish</a>
+              <a href="/tags/%E7%BC%93%E5%AD%98/" rel="tag"># 缓存</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/19/keepalived%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/" rel="prev" title="keepalived高可用集群">
+      <i class="fa fa-chevron-left"></i> keepalived高可用集群
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#基本概念"><span class="nav-number">1.</span> <span class="nav-text">基本概念</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#有效性机制"><span class="nav-number">1.1.</span> <span class="nav-text">有效性机制</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#过期时间"><span class="nav-number">1.1.1.</span> <span class="nav-text">过期时间</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#条件式请求"><span class="nav-number">1.1.2.</span> <span class="nav-text">条件式请求</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存相关报文首部"><span class="nav-number">1.2.</span> <span class="nav-text">缓存相关报文首部</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Varnish"><span class="nav-number">2.</span> <span class="nav-text">Varnish</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#程序架构"><span class="nav-number">2.1.</span> <span class="nav-text">程序架构</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#程序环境"><span class="nav-number">2.2.</span> <span class="nav-text">程序环境</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存机制"><span class="nav-number">2.3.</span> <span class="nav-text">缓存机制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置文件"><span class="nav-number">2.4.</span> <span class="nav-text">配置文件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#varnishadm"><span class="nav-number">2.5.</span> <span class="nav-text">varnishadm</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#VCL配置"><span class="nav-number">2.6.</span> <span class="nav-text">VCL配置</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#基本概念-1"><span class="nav-number">2.6.1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#执行流程"><span class="nav-number">2.6.2.</span> <span class="nav-text">执行流程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#内置变量"><span class="nav-number">2.6.3.</span> <span class="nav-text">内置变量</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#变量定义域"><span class="nav-number">2.6.4.</span> <span class="nav-text">变量定义域</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#缓存实例"><span class="nav-number">2.6.5.</span> <span class="nav-text">缓存实例</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#代理实例"><span class="nav-number">2.6.6.</span> <span class="nav-text">代理实例</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#健康检测实例"><span class="nav-number">2.6.7.</span> <span class="nav-text">健康检测实例</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#日志"><span class="nav-number">2.7.</span> <span class="nav-text">日志</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">35</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
