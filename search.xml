@@ -190,9 +190,9 @@
             
             <tag> 负载均衡 </tag>
             
-            <tag> nginx </tag>
-            
             <tag> keepalived </tag>
+            
+            <tag> nginx </tag>
             
         </tags>
       
