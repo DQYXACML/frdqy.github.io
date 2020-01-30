@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="基础kubernetes是一个容器编排工具，其本质是集群，即组合多台主机的资源对外提供统一服务。在每台主机上安装相关程序，并使得这些程序实现通信，从而实现多个主机的协调。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="k8s(1)-基本架构及部署">
+<meta property="og:url" content="http://yoursite.com/2020/01/30/k8s-1-%E5%9F%BA%E6%9C%AC%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="基础kubernetes是一个容器编排工具，其本质是集群，即组合多台主机的资源对外提供统一服务。在每台主机上安装相关程序，并使得这些程序实现通信，从而实现多个主机的协调。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2020/01/30/k8s-1-%E5%9F%BA%E6%9C%AC%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/k8s%E6%9E%B6%E6%9E%84.jpg">
+<meta property="article:published_time" content="2020-01-30T09:54:20.000Z">
+<meta property="article:modified_time" content="2020-01-30T09:58:34.902Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="kubernetes">
+<meta property="article:tag" content="kubectl">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/01/30/k8s-1-%E5%9F%BA%E6%9C%AC%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/k8s%E6%9E%B6%E6%9E%84.jpg">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/30/k8s-1-%E5%9F%BA%E6%9C%AC%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>k8s(1)-基本架构及部署 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">63</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">2</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">40</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/30/k8s-1-%E5%9F%BA%E6%9C%AC%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          k8s(1)-基本架构及部署
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-30 17:54:20 / 修改时间：17:58:34" itemprop="dateCreated datePublished" datetime="2020-01-30T17:54:20+08:00">2020-01-30</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="基础"><a href="#基础" class="headerlink" title="基础"></a>基础</h3><p>kubernetes是一个容器编排工具，其本质是集群，即组合多台主机的资源对外提供统一服务。在每台主机上安装相关程序，并使得这些程序实现通信，从而实现多个主机的协调。</p>
+<a id="more"></a>
+<h4 id="通信"><a href="#通信" class="headerlink" title="通信"></a>通信</h4><p>k8s的集群内部主要分为三种网络模式，分别为节点网络、集群网络、pod网络。外部请求经由节点网络代理至集群网络，集群网络再代理至pod网络实现通信。</p>
+<p>同一pod内：直接使用lo网卡即可通信</p>
+<p>各pod之间通信：使用overlay Network方式实现叠加网络通信。overlay构建一个虚拟网段，实现各节点的主机内的pod处于同一个虚拟网段，这样就可以直接进行通信，不需要各种NAT转换。原理是利用隧道技术进行二层封装，主机网卡收到pod虚拟地址的报文时封装一层ip地址发送给另一台主机，另一台主机再解封装发现里面仍然是ip报文，根据ip判断是发送给自身虚拟pod的地址，从而实现各pod之间在同一虚拟网段中通信。</p>
+<p>pod与service通信：通过iptables规则或者lvs规则进行通信。其规则由proxy生成。</p>
+<h4 id="存储"><a href="#存储" class="headerlink" title="存储"></a>存储</h4><p>由上文可以知道，想要与pod通信需要先与service通信，而pod更新或者挂掉换新都会导致service规则的更新，这个过程需要通知master的API server进行事务处理。这里就有问题了，因为pod更新通知master那么master必然存储了大量的不必要的通知信息，这很占空间因此不可能存储在master本地，因此这里使用共享存储etcd。</p>
+<p>etcd是键值存储的数据库系统，需要做成高可用集群，etcd通信一般使用https通信。etcd内部使用一个端口进行通信，外部使用另一个端口与master通信，这个过程都是https协议通信。</p>
+<h4 id="名称空间"><a href="#名称空间" class="headerlink" title="名称空间"></a>名称空间</h4><p>在一个k8s集群中，将多个pod划分成不同的空间实现隔离效果，这个隔离是管理的隔离比如分成生成环境、开发环境等等，各个pod仍然可以正常通信不受影响。</p>
+<h4 id="网络策略"><a href="#网络策略" class="headerlink" title="网络策略"></a>网络策略</h4><p>用于实现在网络层面上隔离各个名称空间，定义iptables规则来限制pod之间的访问。k8s虽然本身网络很复杂(三种网络)但是它自身不提供网络配置以及策略的解决方案，因此需要使用第三方插件如canel来实现网络配置和网络策略的设置。</p>
+<h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p>kubernetes是一个有中心节点的集群，其架构为master/nodes模型。用户请求(启动容器等)通过API server发往master，master根据调度器(scheduler)分析各node节点资源，判断哪个适合完成用户请求的操作，接着将请求发给调度过的node上，node通过容器引擎(一般为docker)运行相关容器。</p>
+<p><img src="/2020/01/30/k8s-1-%E5%9F%BA%E6%9C%AC%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/k8s%E6%9E%B6%E6%9E%84.jpg" alt></p>
+<p>scheduler：工作在master的调度器。负责观测各node节点可供使用的CPU、RAM等资源，并根据用户申请所需要的资源量来判断将请求交给哪个node相应。调度时一般分成两步，第一步选出所有符合资源需求的node；第二步根据优选算法再挑选最符合的node进行调度。</p>
+<p>controllers：控制器管理器。用于管理各控制器的健康状态。管理器自身基于master做冗余从而保证自身的健康。</p>
+<p>pod：它是逻辑组件，是kubernetes的最小调度单位，有前端pod与后端pod等根据不同功用分配的类型。它是容器的封装，可以理解为docker中的多个容器共享一个网络名称空间实现的效果。pod内的多个容器除了共享网络名称空间外还共享存储卷。另外，虽然它可以组合多个容器，但是一般关联不大的容器不封装为一个pod，只有像日志记录容器和主服务容器可以建议封装在一个pod中。pod使用标签来实现不同pod的身份识别，从而可以统一控制一类pod，一般使用label selector来实现过滤。</p>
+<p>replication controller：副本控制器，用于管理pod，可以实现pod调度。它也可以实现pod的版本滚动更新。常见的pod控制器有：Deployment(无状态)、StatefulSet(有状态)、Job(用于实现小功能，如删除数据)等。一般情况下不直接对pod进行调用而调用其控制器。</p>
+<p>service：它是定义一系列pod的逻辑抽象，本质就是iptables规则或者lvs规则。它工作在一组pod之前，根据lvs实现负载均衡式的对pod的调度。考虑一种情况，当某个pod节点坏掉后需要新的pod替换，那么新的pod的ip地址、主机名等关键资源都将变动，那么如何才能让master无视这种变得来调用pod呢？service就是为解决此问题而提出的抽象概念，它通过label来识别不同的pod。service本身具有名称，可以根据集群内部的DNS pod实现解析，并且一旦service地址改变DNS会自动修改对应条目，使得pod客户端在下次申请资源时依旧正确连接service从而与后端pod进行交互。</p>
+<p>node：物理机，通常成为Minion，主要运行多个pod。</p>
+<p>kubelet：node的集群代理。工作在node节点，用于与master通信并接收执行各种任务的组件。它调用容器引擎如docker来管理容器。</p>
+<p>proxy：node代理。负责随时与master的API server通信。因为每次node节点上的pod有变动时会主动通知API server生成一个事件，该事件会通知proxy创建新的service规则。</p>
+<h3 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h3><p>安装一般有两种方式：</p>
+<p>第一种方式是手动将k8s的master以及node节点的各个功能以守护进程的方式运行在主机上，这种方式需要全程手动参与，且要解决大量证书问题，很繁琐。</p>
+<p>第二种方式是使用kubeadm部署，它将k8s本身也部署为pod，且各个master以及node只需要安装配置docker以及kubelet即可。前者是容器运行的必备引擎，后者是运行pod化容器的核心组件，这些pod都是静态pod。最后部署好flanner即可通信。</p>
+<h4 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h4><p>节点网络：172.20.0.0/16</p>
+<p>service网络：10.96.0.0/12</p>
+<p>Pod网络：10.244.0.0/16，该网络为flannel默认网段</p>
+<h4 id="配置master"><a href="#配置master" class="headerlink" title="配置master"></a>配置master</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#配置yum源，编辑/etc/yum.repos.d/kubernetes.repo</span></span><br><span class="line">[kubernetes]</span><br><span class="line">name=kubernetes repo</span><br><span class="line">baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/</span><br><span class="line">enabled=1</span><br><span class="line">gpgcheck=0</span><br><span class="line"></span><br><span class="line"><span class="comment">#配置docker-ce源，此处省略</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#安装</span></span><br><span class="line">yum install -y docker-ce kubelet kubeadm kubectl</span><br><span class="line"></span><br><span class="line"><span class="comment">#设置开机启动</span></span><br><span class="line">systemctl <span class="built_in">enable</span> kubelet</span><br><span class="line">systemctl <span class="built_in">enable</span> docker</span><br><span class="line"></span><br><span class="line"><span class="comment">#修改配置文件/etc/sysconfig/kubelet，使得开启swap时不会出错</span></span><br><span class="line">KUBELET_EXTRA_ARGS=<span class="string">"--fail-swap-on=false"</span></span><br><span class="line"><span class="comment">#初始化init</span></span><br><span class="line">kubeadm init --pod-network=10.244.0.0/16 --service-cidr=10.96.0.0/12 --ignore-preflight-errors=Swap</span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">上述命令会pull镜像到本地，可以先使用kubeadm config images pull预先拖取镜像</span><br><span class="line">安装成功后会提示建议执行的一系列指令，按照要求执行即可</span><br><span class="line">成功后最后一行会有一串命令用来使得别的node加入该k8s集群中，包括密钥认证等，需要保存好该指令</span><br><span class="line"></span><br><span class="line"><span class="comment">#下载fanner镜像，从github上手册下载</span></span><br><span class="line">kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml</span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">执行上述命令后很快会显示create，但是并没有好，需要等待docker image有flannel镜像拉取成功并且名称空间中有对应节点才说明安装好</span><br><span class="line"><span class="comment">#查看kube-system名称空间节点</span></span><br><span class="line">kubectl get pods -n kube-system</span><br></pre></td></tr></table></figure>
+
+<h4 id="配置node"><a href="#配置node" class="headerlink" title="配置node"></a>配置node</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#将master的docker-ce.repo和kubernetes.repo复制过来</span></span><br><span class="line"><span class="comment">#安装</span></span><br><span class="line">yum install -y docker-ce kubelet kubeadm</span><br><span class="line"></span><br><span class="line"><span class="comment">#将master的/etc/sysconfig/kubelet配置文件复制过来</span></span><br><span class="line"><span class="comment">#设置开机启动</span></span><br><span class="line">systemctl <span class="built_in">enable</span> kubelet</span><br><span class="line">systemctl <span class="built_in">enable</span> docker</span><br><span class="line"></span><br><span class="line"><span class="comment">#使用之前保存的join命令加入k8s集群，需要指明--ignore-preflight-error=Swap</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#下载fanner镜像，从github上手册下载</span></span><br><span class="line">kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml</span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">执行上述命令后很快会显示create，但是并没有好，需要等待docker image有flannel镜像拉取成功并且名称空间中有对应节点才说明安装好</span><br><span class="line"><span class="comment">#查看kube-system名称空间节点</span></span><br><span class="line">kubectl get pods -n kube-system</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="命令"><a href="#命令" class="headerlink" title="命令"></a>命令</h3><h4 id="get"><a href="#get" class="headerlink" title="get"></a>get</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#查看状态，包括scheduler、controller、etcd</span></span><br><span class="line">kubectl get cs</span><br><span class="line"><span class="comment">#获取节点信息，显示详细信息</span></span><br><span class="line">kubectl get nodes -o wide</span><br><span class="line"><span class="comment">#获取名称空间</span></span><br><span class="line">kubectl get ns</span><br><span class="line"><span class="comment">#查看pod信息，默认节点是default名称空间内的pod</span></span><br><span class="line">kubectl get pods</span><br><span class="line"><span class="comment">#列举所有service</span></span><br><span class="line">kubectl get services</span><br><span class="line"><span class="comment">#查看指定控制器</span></span><br><span class="line">kubectl get deployment</span><br><span class="line"><span class="comment">#查看指定标签</span></span><br><span class="line">kubectl get pods -l <span class="string">"release in (canary,beta,alpha)"</span></span><br><span class="line">kubectl get pods -l <span class="string">"release notin (canary,beta,alpha)"</span></span><br><span class="line">kubectl get pods -l release,app</span><br><span class="line">kubectl get pods -l release=stable,app</span><br><span class="line">kubectl get pods -l release!=stable,app</span><br><span class="line"></span><br><span class="line">--all-namespaces：显示所有名称空间</span><br><span class="line">-o wide：显示详细信息</span><br><span class="line">-l label1,laebl2：查看指定label的pod</span><br></pre></td></tr></table></figure>
+
+<h4 id="run"><a href="#run" class="headerlink" title="run"></a>run</h4><p>创建并运行一个镜像，且创建指定pod控制器(deployment或者job)</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">--image=nginx		<span class="comment">#使用指定镜像创建资源</span></span><br><span class="line">--replicas=5		<span class="comment">#指定启动多少个pod资源</span></span><br><span class="line">--restart=Never		<span class="comment">#容器结束不自动启动</span></span><br><span class="line">--port=80			<span class="comment">#暴露哪个端口</span></span><br><span class="line">--dry-run=<span class="literal">true</span>		<span class="comment">#是否只执行命令不创建</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="exec"><a href="#exec" class="headerlink" title="exec"></a>exec</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#交互式连入指定pod</span></span><br><span class="line">kubelet <span class="built_in">exec</span> -it pod_name -- /bin/sh</span><br></pre></td></tr></table></figure>
+
+<h4 id="delete"><a href="#delete" class="headerlink" title="delete"></a>delete</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-n ns				<span class="comment">#指明删除哪个名称空间下的资源</span></span><br><span class="line">-l name=label		<span class="comment">#删除指定label的pod</span></span><br><span class="line">-f name.yaml		<span class="comment">#删除指定资源清单定义的资源</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="scale"><a href="#scale" class="headerlink" title="scale"></a>scale</h4><p>调整指定deployment的pod个数，既可以增大也可以减小</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl scale --replicas=5 deployment nginx-deploy</span><br></pre></td></tr></table></figure>
+
+<h4 id="set"><a href="#set" class="headerlink" title="set"></a>set</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#动态升级</span></span><br><span class="line">kubectl <span class="built_in">set</span> image deployment nginx-deploy nginx-deploy=docker_name/name:v2</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">第一个nginx-deploy表示控制器名称，即实例里第一命令创建的名称，第二个nginx-deploy表示容器名称</span><br><span class="line"><span class="comment">#查找指定容器对应详细信息，包括属于哪个deployment和镜像名称</span></span><br><span class="line">kubectl describe pods pods_name</span><br></pre></td></tr></table></figure>
+
+<h4 id="rollout"><a href="#rollout" class="headerlink" title="rollout"></a>rollout</h4><p>回滚操作</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kuberctl rollout undo deployment nginx-deploy</span><br></pre></td></tr></table></figure>
+
+<h4 id="explain"><a href="#explain" class="headerlink" title="explain"></a>explain</h4><p>查看资源定义文档</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#查看某个资源如何定义，可以逐级查看</span></span><br><span class="line">kubectl explain pod.metadata</span><br></pre></td></tr></table></figure>
+
+<h4 id="create"><a href="#create" class="headerlink" title="create"></a>create</h4><p>从yaml文件或标准输入来加载资源对象</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#根据自定义的pod-demo.yaml来创建pod</span></span><br><span class="line">kubectl create -f pod-demo.yaml</span><br></pre></td></tr></table></figure>
+
+<h4 id="describe"><a href="#describe" class="headerlink" title="describe"></a>describe</h4><p>显示一个或者多个资源对象的详细信息。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl describe 资源类型 资源名称</span><br></pre></td></tr></table></figure>
+
+<h4 id="log"><a href="#log" class="headerlink" title="log"></a>log</h4><p>查看容器的日志</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">kubectl logs &lt;pod-name&gt;</span><br><span class="line"><span class="comment">#实时查看日志</span></span><br><span class="line">kubectl logs -f &lt;pod-name&gt;</span><br></pre></td></tr></table></figure>
+
+<h4 id="label"><a href="#label" class="headerlink" title="label"></a>label</h4><p>为资源打标签</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">kubectl label &lt;type_name&gt; &lt;name&gt; KEY_1=VAL_1 KEY_2=VAL_2...</span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">kubectl label pods pod-demo release=canary</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h3><p>在master上创建一个pod镜像</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">kubectl run nginx-deploy --image=nginx --replicas=1</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">默认使用deployment调度</span><br></pre></td></tr></table></figure>
+
+<p>在master上创建一个service，需要指明是为哪个pod创建</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">kubectl expose deployment nginx-deploy --name=nginx --port=80 --target-port=80 --protocol=TCP</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">nginx-deploy就是上面创建的pod镜像</span><br><span class="line">--port指的是服务端口，即service_port；--target-port指的是容器端口，即pod_port</span><br><span class="line">创建好后其他pod即可访问该service名nginx来访问该service下的pod镜像</span><br><span class="line">注意直接以域名访问时需要用到CoreDNS来解析，必须创建一个pod客户端来访问，否则DNS检索时后缀补充会出问题</span><br><span class="line"></span><br><span class="line"><span class="comment">#查看该service的详细信息，包括监听的标签，即关联的pod的标签名；还有关联pod的ip</span></span><br><span class="line">kubectl describe service nginx</span><br></pre></td></tr></table></figure>
+
+<p>创建一个pod客户端来访问nginx</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#创建名为client的pod镜像</span></span><br><span class="line">kubectl run client --image=busybox --replicas=1 -it --restart=Never</span><br></pre></td></tr></table></figure>
+
+<p>删除nginx的pod后，会自动创建新的pod，自此简单的k8s已搭好。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">kubectl delete nginx-xxx</span><br><span class="line"><span class="comment">#删除后查看发现已经重新创建pod，且名称后缀已经改变</span></span><br><span class="line">kubectl get pods</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/kubernetes/" rel="tag"># kubernetes</a>
+              <a href="/tags/kubectl/" rel="tag"># kubectl</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/28/docker%E8%AF%A6%E8%A7%A3/" rel="prev" title="docker详解">
+      <i class="fa fa-chevron-left"></i> docker详解
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#基础"><span class="nav-number">1.</span> <span class="nav-text">基础</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#通信"><span class="nav-number">1.1.</span> <span class="nav-text">通信</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#存储"><span class="nav-number">1.2.</span> <span class="nav-text">存储</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#名称空间"><span class="nav-number">1.3.</span> <span class="nav-text">名称空间</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#网络策略"><span class="nav-number">1.4.</span> <span class="nav-text">网络策略</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#架构"><span class="nav-number">2.</span> <span class="nav-text">架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#安装"><span class="nav-number">3.</span> <span class="nav-text">安装</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#环境"><span class="nav-number">3.1.</span> <span class="nav-text">环境</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置master"><span class="nav-number">3.2.</span> <span class="nav-text">配置master</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置node"><span class="nav-number">3.3.</span> <span class="nav-text">配置node</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#命令"><span class="nav-number">4.</span> <span class="nav-text">命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#get"><span class="nav-number">4.1.</span> <span class="nav-text">get</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#run"><span class="nav-number">4.2.</span> <span class="nav-text">run</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#exec"><span class="nav-number">4.3.</span> <span class="nav-text">exec</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#delete"><span class="nav-number">4.4.</span> <span class="nav-text">delete</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#scale"><span class="nav-number">4.5.</span> <span class="nav-text">scale</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#set"><span class="nav-number">4.6.</span> <span class="nav-text">set</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#rollout"><span class="nav-number">4.7.</span> <span class="nav-text">rollout</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#explain"><span class="nav-number">4.8.</span> <span class="nav-text">explain</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#create"><span class="nav-number">4.9.</span> <span class="nav-text">create</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#describe"><span class="nav-number">4.10.</span> <span class="nav-text">describe</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#log"><span class="nav-number">4.11.</span> <span class="nav-text">log</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#label"><span class="nav-number">4.12.</span> <span class="nav-text">label</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#实例"><span class="nav-number">5.</span> <span class="nav-text">实例</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">40</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">63</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
