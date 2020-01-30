@@ -198,9 +198,9 @@
     
       <category term="负载均衡" scheme="http://yoursite.com/tags/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/"/>
     
-      <category term="keepalived" scheme="http://yoursite.com/tags/keepalived/"/>
-    
       <category term="nginx" scheme="http://yoursite.com/tags/nginx/"/>
+    
+      <category term="keepalived" scheme="http://yoursite.com/tags/keepalived/"/>
     
   </entry>
   
