@@ -46,15 +46,20 @@
   };
 </script>
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Frdqy的博客">
-<meta property="og:url" content="http://yoursite.com/tags/dns/index.html">
+  <meta name="description" content="转载：https:&#x2F;&#x2F;www.xuebuyuan.com&#x2F;2158147.html 在配置kubenetes存储卷时遇到nfs配置问题，在网上找到如下解决方案">
+<meta property="og:type" content="article">
+<meta property="og:title" content="nfs各种问题解决">
+<meta property="og:url" content="http://yoursite.com/2020/02/02/nfs%E5%90%84%E7%A7%8D%E9%97%AE%E9%A2%98%E8%A7%A3%E5%86%B3/index.html">
 <meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="转载：https:&#x2F;&#x2F;www.xuebuyuan.com&#x2F;2158147.html 在配置kubenetes存储卷时遇到nfs配置问题，在网上找到如下解决方案">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-02-02T10:25:38.000Z">
+<meta property="article:modified_time" content="2020-02-02T10:29:36.940Z">
 <meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="nfs">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://yoursite.com/tags/dns/">
+<link rel="canonical" href="http://yoursite.com/2020/02/02/nfs%E5%90%84%E7%A7%8D%E9%97%AE%E9%A2%98%E8%A7%A3%E5%86%B3/">
 
 
 <script id="page-configurations">
@@ -62,11 +67,11 @@
   CONFIG.page = {
     sidebar: "",
     isHome: false,
-    isPost: false
+    isPost: true
   };
 </script>
 
-  <title>标签: dns | Frdqy的博客</title>
+  <title>nfs各种问题解决 | Frdqy的博客</title>
   
 
 
@@ -177,50 +182,127 @@
           <div class="content">
             
 
+  <div class="posts-expand">
+      
   
   
-  
-  <div class="post-block">
-    <div class="posts-collapse">
-      <div class="collection-title">
-        <h1 class="collection-header">dns
-          <small>标签</small>
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/02/nfs%E5%90%84%E7%A7%8D%E9%97%AE%E9%A2%98%E8%A7%A3%E5%86%B3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          nfs各种问题解决
         </h1>
-      </div>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-02-02 18:25:38 / 修改时间：18:29:36" itemprop="dateCreated datePublished" datetime="2020-02-02T18:25:38+08:00">2020-02-02</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%96%91%E9%9A%BE%E6%9D%82%E7%97%87/" itemprop="url" rel="index">
+                    <span itemprop="name">疑难杂症</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
 
       
-    <div class="collection-year">
-      <h1 class="collection-header">2020</h1>
+        <p>转载：<a href="https://www.xuebuyuan.com/2158147.html" target="_blank" rel="noopener">https://www.xuebuyuan.com/2158147.html</a></p>
+<p>在配置kubenetes存储卷时遇到nfs配置问题，在网上找到如下解决方案</p>
+<a id="more"></a>
+
+<h3 id="Permission-denied"><a href="#Permission-denied" class="headerlink" title="Permission denied"></a>Permission denied</h3><p>mount: 192.168.81.32:/opt failed, reason given by server: Permission denied</p>
+<p>查看配置文件exports,是否为允许挂载的客户。</p>
+<h3 id="error-No-route-to-host"><a href="#error-No-route-to-host" class="headerlink" title="error = No route to host"></a>error = No route to host</h3><p>mount: RPC: Unable to receive; errno = No route to host</p>
+<p>首先看是否在同一网段</p>
+<p>再者输入：</p>
+<p>[root@localhost etc]# service iptables status</p>
+<p>看防火墙是否开启，有则将其关闭</p>
+<p>[root@localhost etc]# service iptables stop</p>
+<p> 注意：但是这样子有时候其实还是有一些问题, 因此我们干脆直接将防火墙关闭掉, 同时关闭selinux</p>
+<h3 id="error-Connection-refused"><a href="#error-Connection-refused" class="headerlink" title="error = Connection refused"></a>error = Connection refused</h3><p>mount: RPC: Unable to receive; errno = Connection refused</p>
+<p>① 首先看nfs服务是否开启，</p>
+<p>② 其次看rpcbind是否开启，</p>
+<p>如果rpcbind没有运行，那在重新开启rpcbind后，要再restart nfs服务，</p>
+<p>因为重启rpcbind已对nfs的一些配置造成影响，需要restart.</p>
+<p>没错，看到这时候，你已经找到问题了，</p>
+<h3 id="not-responding-still-trying"><a href="#not-responding-still-trying" class="headerlink" title="not responding,still trying.."></a>not responding,still trying..</h3><p>有时候传输大文件会出错,</p>
+<p>NFS: server 192.168.81.32 not responding,still trying..</p>
+<p>这个可能是NFS有问题,与RING或buffer的大小有关,</p>
+<p> 问题的原因分析：</p>
+<p>1、NFS 的默认传输协议是 UDP，而PC机与嵌入式系统通过UPD交互时就会出现严重的网卡丢包现象；</p>
+<p>2、server机和目标机网卡传输速率冲突，使得目标机需要大量时间复制大量数据包，其实如果目标机的网卡速率够大，则不用分那么多包，也不会冲突。</p>
+<p>问题的解决方案：</p>
+<p>方法一：</p>
+<p>在客户端改用TCP协议，使用下面的命令，在mount命令中加上参数tcp</p>
+<p>mount -o tcp ,nolock 192.168.14.223:/nfs_root /mnt</p>
+<p>也可这样干：</p>
+<p>跟踪了fs/nfs/nfsroot.c的代码，发现在nfs作为根文件系统时，参数可以直接写在“nfsroot=”后面，每个参数用逗号隔开，如：</p>
+<p>nfsroot=192.168.10.1:/rootfs,proto=tcp,nfsvers=3,nolock</p>
+<p>这样就可以指定nfs使用tcp协议</p>
+<p>方法二：</p>
+<p>指定传输速率（限定传输时一次读写的数据大小）</p>
+<p>#mount -t nfs -o intr,nolock,rsize=1024,wsize=1024 192.168.14.223:/nfs_root /mnt</p>
+
     </div>
 
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
+    
+    
+    
 
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-01-08T20:46:38+08:00"
-              content="2020-01-08">
-          01-08
-        </time>
-      </div>
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/nfs/" rel="tag"># nfs</a>
+          </div>
 
-      <h2 class="post-title">
-          <a class="post-title-link" href="/2020/01/08/DNS%E5%92%8Cbind%E8%AF%A6%E8%A7%A3/" itemprop="url">
-            <span itemprop="name">DNS和bind详解</span>
-          </a>
-      </h2>
+        
 
-    </header>
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/01/k8s-3-ingress%E8%AF%A6%E8%A7%A3/" rel="prev" title="k8s(3)-ingress详解">
+      <i class="fa fa-chevron-left"></i> k8s(3)-ingress详解
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
   </article>
+  
+  
+  
 
-    </div>
   </div>
-  
-  
-  
-
-  
-
 
 
           </div>
@@ -271,6 +353,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Permission-denied"><span class="nav-number">1.</span> <span class="nav-text">Permission denied</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#error-No-route-to-host"><span class="nav-number">2.</span> <span class="nav-text">error &#x3D; No route to host</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#error-Connection-refused"><span class="nav-number">3.</span> <span class="nav-text">error &#x3D; Connection refused</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#not-responding-still-trying"><span class="nav-number">4.</span> <span class="nav-text">not responding,still trying..</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
