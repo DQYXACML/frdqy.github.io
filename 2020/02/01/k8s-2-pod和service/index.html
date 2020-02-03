@@ -56,7 +56,7 @@
 <meta property="og:image" content="http://yoursite.com/2020/02/01/k8s-2-pod%E5%92%8Cservice/k8s-userspace.png">
 <meta property="og:image" content="http://yoursite.com/2020/02/01/k8s-2-pod%E5%92%8Cservice/k8s-iptables.png">
 <meta property="article:published_time" content="2020-02-01T09:37:24.000Z">
-<meta property="article:modified_time" content="2020-02-01T09:39:38.043Z">
+<meta property="article:modified_time" content="2020-02-03T04:23:01.427Z">
 <meta property="article:author" content="Frdqy">
 <meta property="article:tag" content="kubernetes">
 <meta property="article:tag" content="pod">
@@ -152,7 +152,7 @@
   </li>
         <li class="menu-item menu-item-tags">
 
-    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">65</span></a>
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">66</span></a>
 
   </li>
         <li class="menu-item menu-item-categories">
@@ -162,7 +162,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">43</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">44</span></a>
 
   </li>
   </ul>
@@ -213,10 +213,16 @@
                 <i class="fa fa-calendar-o"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2020-02-01 17:37:24 / 修改时间：17:39:38" itemprop="dateCreated datePublished" datetime="2020-02-01T17:37:24+08:00">2020-02-01</time>
+              <time title="创建时间：2020-02-01 17:37:24" itemprop="dateCreated datePublished" datetime="2020-02-01T17:37:24+08:00">2020-02-01</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-03 12:23:01" itemprop="dateModified" datetime="2020-02-03T12:23:01+08:00">2020-02-03</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="fa fa-folder-o"></i>
@@ -298,7 +304,23 @@
 
 <h4 id="Job"><a href="#Job" class="headerlink" title="Job"></a>Job</h4><p>用于执行一次性pod，如果正常执行结束则不会被重启，如果未结束时被异常终止那么会重启该pod。</p>
 <h4 id="Cronjob"><a href="#Cronjob" class="headerlink" title="Cronjob"></a>Cronjob</h4><p>周期性job</p>
-<h4 id="StatefulSet"><a href="#StatefulSet" class="headerlink" title="StatefulSet"></a>StatefulSet</h4><p>用于管理有状态的pod，且每一个pod都被单独管理。</p>
+<h4 id="StatefulSet"><a href="#StatefulSet" class="headerlink" title="StatefulSet"></a>StatefulSet</h4><p>用于管理有状态的pod，且每一个pod都被单独管理。如redis、mysql等。该控制器主要管理有以下特性的控制程序：</p>
+<ul>
+<li>稳定且唯一的网络标识符</li>
+<li>稳定且持久的存储</li>
+<li>有序平滑的部署扩展和终止删除</li>
+<li>有序的滚动更新</li>
+</ul>
+<p>它需要三个组件：</p>
+<p>headless service：用于确保pod删除后再重建它的名称等信息必须和原来一样，因为pod名称是唯一标识符。因此使用headless service，它确保解析直达后端pod而不是代理的service。</p>
+<p>statefulSet：pod管理器</p>
+<p>volumeClaimTemplate：有状态的pod不能使用同一个存储卷，因此不能使用deployment中template定义pod来定义。这里使用volumeClaimTemplate实现动态创建pvc，并且绑定各自的pv，从而实现各自挂载各自的存储卷(分布式存储)</p>
+<h5 id="资源定义-1"><a href="#资源定义-1" class="headerlink" title="资源定义"></a>资源定义</h5><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Service</span></span><br><span class="line"><span class="attr">meatadata:</span></span><br><span class="line">	<span class="attr">name:</span> <span class="string">nginx-svc</span></span><br><span class="line">	<span class="attr">labels:</span></span><br><span class="line">		<span class="attr">app:</span> <span class="string">nginx-svc</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">	<span class="attr">clusterIP:</span> <span class="string">None</span></span><br><span class="line">	<span class="attr">ports:</span></span><br><span class="line">	<span class="bullet">-</span> <span class="attr">port:</span> <span class="number">80</span></span><br><span class="line">	  <span class="attr">name:</span> <span class="string">web</span></span><br><span class="line">	<span class="attr">selector:</span></span><br><span class="line">		<span class="attr">app:</span> <span class="string">nginx-pod</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">StatefulSet</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">	<span class="attr">name:</span> <span class="string">nginx</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">	<span class="attr">serviceName:</span> <span class="string">nginx-svc</span></span><br><span class="line">	<span class="attr">replicas:</span> <span class="number">2</span></span><br><span class="line">	<span class="attr">selector:</span></span><br><span class="line">		<span class="attr">matchLabels:</span></span><br><span class="line">			<span class="attr">app:</span> <span class="string">nginx-pod</span></span><br><span class="line">	<span class="attr">template:</span></span><br><span class="line">		<span class="attr">metadata:</span></span><br><span class="line">			<span class="attr">labels:</span></span><br><span class="line">				<span class="attr">app:</span> <span class="string">nginx-pod</span></span><br><span class="line">		<span class="attr">sepc:</span></span><br><span class="line">			<span class="attr">containers:</span></span><br><span class="line">			<span class="bullet">-</span> <span class="attr">name:</span> <span class="string">nginx</span></span><br><span class="line">			  <span class="attr">image:</span> <span class="string">nginx</span></span><br><span class="line">			  <span class="attr">imagePullPolicy:</span> <span class="string">IfNotPresent</span></span><br><span class="line">			<span class="attr">ports:</span></span><br><span class="line">			<span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">80</span></span><br><span class="line">			  <span class="attr">name:</span> <span class="string">web</span></span><br><span class="line">			<span class="attr">volumeMounts:</span></span><br><span class="line">			<span class="bullet">-</span> <span class="attr">name:</span> <span class="string">nginxdata</span></span><br><span class="line">			  <span class="attr">mountPath:</span> <span class="string">/usr/share/nginx/html</span></span><br><span class="line">		<span class="attr">volumeClaimTemplates:</span></span><br><span class="line">		<span class="bullet">-</span> <span class="attr">metadata:</span></span><br><span class="line">			<span class="attr">name:</span> <span class="string">nginxdata</span></span><br><span class="line">		  <span class="attr">spec:</span></span><br><span class="line">		  	<span class="attr">accessModes:</span> <span class="string">["ReadWriteOnce"]</span></span><br><span class="line">		  	<span class="attr">storageClassName:</span> <span class="string">"gluster-dynamic"</span></span><br><span class="line">		  	<span class="attr">resources:</span></span><br><span class="line">				<span class="attr">requests:</span></span><br><span class="line">					<span class="attr">storage:</span> <span class="string">2Gi</span></span><br><span class="line">	</span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line"><span class="string">删除pod是有顺序依次删除，且不会删除对应的pvc，可以保证数据不丢失；删除后重新绑定仍然是之前对应的pvc</span></span><br><span class="line"><span class="string">每个pod名称都需要被解析，这里解析需要额外指明service_name，如：pod_name.service_name.ns_name.svc.cluster.local</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="修改命令"><a href="#修改命令" class="headerlink" title="修改命令"></a>修改命令</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#扩容，顺序增序</span></span><br><span class="line">kubectl scale sts nginx --replicas=5</span><br><span class="line"><span class="comment">#镜像升级</span></span><br><span class="line">这里升级支持定义updateStrategy升级策略，其rollingUpdate属性下有一个属性为partition，它指明更新边界。</span><br><span class="line">我们知道statefulSet创建的pod有编号，从0-n，如果partition为n，表示编号大于等于n的都会更新，可以模拟出灰度更新的效果</span><br><span class="line">kubectl <span class="built_in">set</span> image sts/nginx nginx=nginx:v2</span><br></pre></td></tr></table></figure>
+
+
+
 <h3 id="Service"><a href="#Service" class="headerlink" title="Service"></a>Service</h3><p>用于解决pod更新时地址等资源改变的问题而提出的新概念，是对多个pod的封装，pod客户端访问其他pod时是通过service访问，其本质是iptables规则或者是ipvs规则。这些规则由node节点上的kube-proxy组件实现，它一直使用watch方法监视apiserver，service资源有变动时对应kube-proxy会将其定义为规则。</p>
 <h4 id="实现方式"><a href="#实现方式" class="headerlink" title="实现方式"></a>实现方式</h4><h5 id="userspace"><a href="#userspace" class="headerlink" title="userspace"></a>userspace</h5><p><img src="/2020/02/01/k8s-2-pod%E5%92%8Cservice/k8s-userspace.png" alt></p>
 <p>请求由ClientPod发给ServiceIP，ServiceIP将其转发给本地的kube-proxy，再由kube-proxy经由ServiceIP发送给目的地的kube-proxy，最后发送给对应的ServerPod。这种模式的通信kube-proxy是工作在用户空间的进程，这种通信方式效率很低(内核和用户空间的切换)。</p>
@@ -398,7 +420,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#资源清单"><span class="nav-number">1.</span> <span class="nav-text">资源清单</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod"><span class="nav-number">2.</span> <span class="nav-text">Pod</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#分类"><span class="nav-number">2.1.</span> <span class="nav-text">分类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#生命周期"><span class="nav-number">2.2.</span> <span class="nav-text">生命周期</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#创建过程"><span class="nav-number">2.3.</span> <span class="nav-text">创建过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#删除过程"><span class="nav-number">2.4.</span> <span class="nav-text">删除过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#资源定义"><span class="nav-number">2.5.</span> <span class="nav-text">资源定义</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#健康检测实例"><span class="nav-number">2.6.</span> <span class="nav-text">健康检测实例</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod控制器"><span class="nav-number">3.</span> <span class="nav-text">Pod控制器</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ReplicaSet"><span class="nav-number">3.1.</span> <span class="nav-text">ReplicaSet</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Deployment"><span class="nav-number">3.2.</span> <span class="nav-text">Deployment</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#DaemonSet"><span class="nav-number">3.3.</span> <span class="nav-text">DaemonSet</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Job"><span class="nav-number">3.4.</span> <span class="nav-text">Job</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Cronjob"><span class="nav-number">3.5.</span> <span class="nav-text">Cronjob</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#StatefulSet"><span class="nav-number">3.6.</span> <span class="nav-text">StatefulSet</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Service"><span class="nav-number">4.</span> <span class="nav-text">Service</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#实现方式"><span class="nav-number">4.1.</span> <span class="nav-text">实现方式</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#userspace"><span class="nav-number">4.1.1.</span> <span class="nav-text">userspace</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#iptables-ipvs"><span class="nav-number">4.1.2.</span> <span class="nav-text">iptables&#x2F;ipvs</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#类型"><span class="nav-number">4.2.</span> <span class="nav-text">类型</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#定义清单"><span class="nav-number">4.3.</span> <span class="nav-text">定义清单</span></a></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#资源清单"><span class="nav-number">1.</span> <span class="nav-text">资源清单</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod"><span class="nav-number">2.</span> <span class="nav-text">Pod</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#分类"><span class="nav-number">2.1.</span> <span class="nav-text">分类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#生命周期"><span class="nav-number">2.2.</span> <span class="nav-text">生命周期</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#创建过程"><span class="nav-number">2.3.</span> <span class="nav-text">创建过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#删除过程"><span class="nav-number">2.4.</span> <span class="nav-text">删除过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#资源定义"><span class="nav-number">2.5.</span> <span class="nav-text">资源定义</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#健康检测实例"><span class="nav-number">2.6.</span> <span class="nav-text">健康检测实例</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod控制器"><span class="nav-number">3.</span> <span class="nav-text">Pod控制器</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ReplicaSet"><span class="nav-number">3.1.</span> <span class="nav-text">ReplicaSet</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Deployment"><span class="nav-number">3.2.</span> <span class="nav-text">Deployment</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#DaemonSet"><span class="nav-number">3.3.</span> <span class="nav-text">DaemonSet</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Job"><span class="nav-number">3.4.</span> <span class="nav-text">Job</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Cronjob"><span class="nav-number">3.5.</span> <span class="nav-text">Cronjob</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#StatefulSet"><span class="nav-number">3.6.</span> <span class="nav-text">StatefulSet</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#资源定义-1"><span class="nav-number">3.6.1.</span> <span class="nav-text">资源定义</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#修改命令"><span class="nav-number">3.6.2.</span> <span class="nav-text">修改命令</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Service"><span class="nav-number">4.</span> <span class="nav-text">Service</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#实现方式"><span class="nav-number">4.1.</span> <span class="nav-text">实现方式</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#userspace"><span class="nav-number">4.1.1.</span> <span class="nav-text">userspace</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#iptables-ipvs"><span class="nav-number">4.1.2.</span> <span class="nav-text">iptables&#x2F;ipvs</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#类型"><span class="nav-number">4.2.</span> <span class="nav-text">类型</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#定义清单"><span class="nav-number">4.3.</span> <span class="nav-text">定义清单</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -414,7 +436,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">43</span>
+          <span class="site-state-item-count">44</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -427,7 +449,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">65</span>
+        <span class="site-state-item-count">66</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
