@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="基础通信方式 容器间通信：同一个pod内的多个容器间的通信，使用lo接口 pod间通信：overlay叠加网络实现。直达，不要经过NAT转换 pod与service通信：由iptables规则或者lvs规则实现。直达，不要经过NAT转换 service与集群外部通信：配置nodePort或者ingress">
+<meta property="og:type" content="article">
+<meta property="og:title" content="k8s(6)-网络配置">
+<meta property="og:url" content="http://yoursite.com/2020/02/06/k8s-6-%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="基础通信方式 容器间通信：同一个pod内的多个容器间的通信，使用lo接口 pod间通信：overlay叠加网络实现。直达，不要经过NAT转换 pod与service通信：由iptables规则或者lvs规则实现。直达，不要经过NAT转换 service与集群外部通信：配置nodePort或者ingress">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2020/02/06/k8s-6-%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE/k8s-VxLAN.png">
+<meta property="og:image" content="http://yoursite.com/2020/02/06/k8s-6-%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE/k8s-canal.png">
+<meta property="article:published_time" content="2020-02-06T06:36:03.000Z">
+<meta property="article:modified_time" content="2020-02-06T06:41:22.596Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="kubernetes">
+<meta property="article:tag" content="VxLAN">
+<meta property="article:tag" content="flannel">
+<meta property="article:tag" content="canal">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/02/06/k8s-6-%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE/k8s-VxLAN.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/02/06/k8s-6-%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>k8s(6)-网络配置 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">71</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">3</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">46</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/06/k8s-6-%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          k8s(6)-网络配置
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-02-06 14:36:03 / 修改时间：14:41:22" itemprop="dateCreated datePublished" datetime="2020-02-06T14:36:03+08:00">2020-02-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="基础"><a href="#基础" class="headerlink" title="基础"></a>基础</h3><h4 id="通信方式"><a href="#通信方式" class="headerlink" title="通信方式"></a>通信方式</h4><ul>
+<li>容器间通信：同一个pod内的多个容器间的通信，使用lo接口</li>
+<li>pod间通信：overlay叠加网络实现。直达，不要经过NAT转换</li>
+<li>pod与service通信：由iptables规则或者lvs规则实现。直达，不要经过NAT转换</li>
+<li>service与集群外部通信：配置nodePort或者ingress<a id="more"></a>
+<h4 id="实现格式"><a href="#实现格式" class="headerlink" title="实现格式"></a>实现格式</h4></li>
+</ul>
+<p>k8s集群自身不提供网络解决方案，它支持CNI接口的插件来解决。CNI的主要核心是：在创建容器时，先创建好网络名称空间（netns），然后调用CNI插件为这个netns配置网络，最后在启动容器内的进程。每次Pod被初始化或删除，kubelet都会调用默认的CNI插件去创建一个虚拟设备接口附加到相关的底层网络，为Pod去配置IP地址、路由信息并映射到Pod对象的网络名称空间。网络插件存放在/etc/cni/net.d目录下，由kubelet加载该目录下的网络插件，根据其type属性到/opt/cni/bin中查找相关的插件二进制文件，由这些二进制文件和配置文件代为分配网络地址、创建等信息。常见的插件有：flannel、calico、canel等。</p>
+<ul>
+<li>Flannel：为Kubernetes提供叠加网络的网络插件，基于TUN/TAP隧道技术，使用UDP封装IP报文进行创建叠 加网络，借助etcd维护网络的分配情况，缺点：无法支持网络策略访问控制。</li>
+<li>Calico：基于BGP的三层网络插件，也支持网络策略进而实现网络的访问控制；它在每台主机上都运行一个虚拟路由，利用Linux内核转发网络数据包，并借助iptables实现防火墙功能。实际上Calico最后的实现就是将每台主机都变成了一台路由器，将各个网络进行连接起来，实现跨主机通信的功能。</li>
+<li>Canal：由Flannel和Calico联合发布的一个统一网络插件，提供CNI网络插件，并支持网络策略实现。</li>
+<li>其他的还包括Weave Net、Contiv、OpenContrail、Romana、NSX-T、kube-router等等。而Flannel和Calico是目前最流行的选择方案。</li>
+</ul>
+<h3 id="Flannel"><a href="#Flannel" class="headerlink" title="Flannel"></a>Flannel</h3><p>flannel使用叠加式网络进行pod间通信，通过节点上的flannel.1网卡实现隧道来通信。当前节点有pod时会创建一个eni接口的网卡，它的地址是与flannel.1网卡同网络，用于隧道通信。flannel作为pod以daemonset的方式工作在各个具有kubelet的node节点上，用于kubelet调用flannel进行网络部署。因此，有多少node节点(拥有kubelet)就有多少个flannel pod。</p>
+<p>创建flannel的过程在第一章讲过，此处不再赘述。</p>
+<h4 id="配置参数"><a href="#配置参数" class="headerlink" title="配置参数"></a>配置参数</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#查看配置信息</span></span><br><span class="line">kubectl get configmap kube-flannel-cfg -o yaml -n kube-system</span><br><span class="line"></span><br><span class="line"><span class="comment">#常见参数</span></span><br><span class="line">Network：flannel使用的CIDR格式的网络地址，用于为Pod配置网络功能</span><br><span class="line">例如Network：10.244.0.0/16，代表master：10.244.0.0/24、node1：10.244.1.0/24以此类推</span><br><span class="line">Subnetlen：把network切分子网供个节点使用时，使用多长的掩码进行切分，默认为24位，表示每个node可以创建256个pod</span><br><span class="line">SubnetMin：子网起始</span><br><span class="line">SubnetMax：子网最大</span><br><span class="line">Backend：指明pod间通信方式vxlan、host-gw、udp</span><br></pre></td></tr></table></figure>
+
+<h4 id="通信流程"><a href="#通信流程" class="headerlink" title="通信流程"></a>通信流程</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#查看master网卡，会发现几个特殊的，有flannel、cni和一些veth开头的网卡</span></span><br><span class="line">ifconfig</span><br><span class="line"></span><br><span class="line"><span class="comment">#查看master路由信息</span></span><br><span class="line">ip route show</span><br><span class="line">default via 192.168.163.2 dev ens33 proto dhcp metric 100 </span><br><span class="line">10.244.0.0/24 dev cni0 proto kernel scope link src 10.244.0.1 </span><br><span class="line">10.244.1.0/24 via 10.244.1.0 dev flannel.1 onlink </span><br><span class="line">10.244.2.0/24 via 10.244.2.0 dev flannel.1 onlink </span><br><span class="line">172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 </span><br><span class="line">192.168.163.0/24 dev ens33 proto kernel scope link src 192.168.163.132 metric 100</span><br><span class="line"></span><br><span class="line"><span class="comment">#查看cni0网卡的虚拟网桥信息</span></span><br><span class="line">brctl show cni0</span><br><span class="line">bridge name	bridge id		STP enabled	interfaces</span><br><span class="line">cni0		8000.eae2fc220dba	no		veth2bdcb591</span><br><span class="line">										veth3648ee64</span><br><span class="line">										veth6cca7eb2</span><br><span class="line">										veth899cf515</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">cni为flannel创建的虚拟网桥，用于pod本地通信使用</span><br><span class="line">flannel为每个Pod创建一对veth虚拟设备，一端放在容器接口上，一端放在cni0桥上(和docker一样)</span><br><span class="line">上面这些路由信息可以看出，发送到主机10.244.2.0/24及10.244.1.0/24网段的报文都通过flannel.1网卡接口进行隧道封装(VxLAN协议)</span><br></pre></td></tr></table></figure>
+
+<h4 id="VxLAN"><a href="#VxLAN" class="headerlink" title="VxLAN"></a>VxLAN</h4><p>默认情况下使用VxLAN协议实现隧道方式进行不通过主机间pod通信，其报文格式如下图：</p>
+<p><img src="/2020/02/06/k8s-6-%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE/k8s-VxLAN.png" alt></p>
+<p>它支持两种方式：</p>
+<ul>
+<li>第一种是当运行pod的node节点处于 同一网段中时使用Directrouting方式进行通信，即将该pod的物理主机网卡当作网关，发往其他主机的报文通过网卡查路由表进行转发；这种方式传输效率很高，类似host-gw模式</li>
+<li>第二种是当pod处于不同网段时，使用隧道进行叠加式网络通信，其中隧道是以太网帧的二层隧道。</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#默认为VxLAN隧道模式，此处演示修改为Directrouting模式</span></span><br><span class="line"><span class="comment">#修改configmap</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="string">"Network"</span>: <span class="string">"10.244.0.0/16"</span>,   <span class="comment">#默认网段</span></span><br><span class="line">    <span class="string">"Backend"</span>: &#123;</span><br><span class="line">		<span class="string">"Type"</span>: <span class="string">"vxlan"</span>,</span><br><span class="line">		<span class="string">"Directrouting"</span>: <span class="literal">true</span>   <span class="comment">#增加</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">#重新应用</span></span><br><span class="line">kubectl apply -f kube-flannel.yml</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">修改flannel时使用edit不能生效，需要重新部署</span><br></pre></td></tr></table></figure>
+
+<h4 id="host-gw"><a href="#host-gw" class="headerlink" title="host-gw"></a>host-gw</h4><p>该方式类似于VxLAN的Directrouting模式，即不同node节点处于同一网段中时，其上的pod直接使用node物理网卡进行通信，网卡上维护路由表用于路由转发，因此必须处于同一网段，否则可能会被路由转发到其他主机。</p>
+<p>具体配置只需要改Backend字段的type字段即可</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#修改配置文件</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="string">"Network"</span>: <span class="string">"10.244.0.0/16"</span>,   <span class="comment">#默认网段</span></span><br><span class="line">    <span class="string">"Backend"</span>: &#123;</span><br><span class="line">		<span class="string">"Type"</span>: <span class="string">"host-gw"</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Canal"><a href="#Canal" class="headerlink" title="Canal"></a>Canal</h3><p>上文提到的Flannel只是一款网络地址分配的插件，它不具备网络策略功能。即在Flannel插件工作下，整个网络各个pod之间都可以通信，它不具备隔离某些pod间通信的功能。因此为了实现网络策略功能，通常使用Calico实现网络策略功能，而flannel实现地址分配功能，二者结合就变成了Canal。</p>
+<h4 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#部署RBAC</span></span><br><span class="line">kubectl apply -f https://docs.projectcalico.org/v3.2/getting-started/kubernetes/installation/hosted/canal/rbac.yaml</span><br><span class="line"></span><br><span class="line"><span class="comment">#部署canal</span></span><br><span class="line">kubectl apply -f https://docs.projectcalico.org/v3.2/getting-started/kubernetes/installation/hosted/canal/canal.yaml</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">Canal作为DaemonSet部署到每个节点，属于kube-system这个名称空间</span><br></pre></td></tr></table></figure>
+
+<h4 id="配置策略"><a href="#配置策略" class="headerlink" title="配置策略"></a>配置策略</h4><p><img src="/2020/02/06/k8s-6-%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE/k8s-canal.png" alt></p>
+<p>在Kubernetes系统中，报文的流入和流出的核心组件是Pod资源，它们也是网络策略功能的主要应用对象。NetworkPolicy对象通过podSelector选择 一组Pod资源作为控制对象。NetworkPolicy是定义在一组Pod资源之上用于管理入站(ingress)流量，或出站(egress)流量的一组规则，有可以是出入站规则一起生效，规则的生效模式通常由spec.policyTypes进行定义。</p>
+<p>默认情况下，Pod对象的流量控制是为空的，报文可以自由出入。在附加网络策略之后，Pod对象会因为NetworkPolicy而被隔离，一旦名称空间中有任何NetworkPolicy对象匹配了某特定的Pod对象，则该Pod将拒绝NetworkPolicy规则中不允许的所有连接请求，但是那些未被匹配到的Pod对象依旧可以接受所有流量。</p>
+<p>就特定的Pod集合来说，入站和出站流量默认是放行状态，除非有规则可以进行匹配。还有一点需要注意的是，在networkpolicy.spec.policyTypes中指定了生效的规则类型，但是在networkpolicy.spec字段中嵌套定义了没有任何规则的Ingress或Egress时，则表示拒绝入站或出站的一切流量。即默认的ingress和egress规则都是拒绝一切。</p>
+<h4 id="资源定义"><a href="#资源定义" class="headerlink" title="资源定义"></a>资源定义</h4><p>networkpolicy自身就是k8s集群的资源对象。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#spec属性</span></span><br><span class="line">egress &lt;[]Object&gt;			<span class="comment">#定义出站规则</span></span><br><span class="line">	ports &lt;[]Object&gt;		<span class="comment">#定义目标端口</span></span><br><span class="line">		port &lt;string&gt;		<span class="comment">#端口</span></span><br><span class="line">		protocol &lt;string&gt;	<span class="comment">#协议</span></span><br><span class="line">	to &lt;[]Object&gt;			<span class="comment">#定义目标地址</span></span><br><span class="line">		ipBlock &lt;Object&gt;	<span class="comment">#目标为ip地址范围或主机的pod</span></span><br><span class="line">		namespaceSelector	<span class="comment">#目标为名称空间内所有pod</span></span><br><span class="line">		podSelector &lt;Object&gt;<span class="comment">#目标为一组pod</span></span><br><span class="line">		</span><br><span class="line">ingress &lt;[]Object&gt;			<span class="comment">#定义入站规则，与egress相似</span></span><br><span class="line">	from &lt;[]Object&gt;</span><br><span class="line">	ports &lt;[]Object&gt;</span><br><span class="line">podSelector &lt;Object&gt;		<span class="comment">#定义管理的pod</span></span><br><span class="line">policyTypes &lt;[]string&gt;		<span class="comment">#定义选择的策略类型</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h4><p>设置两个名称空间，一个为dev，一个为prod。下面进行不同名称空间访问的控制</p>
+<p>创建名称空间</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kubectl create namespace dev</span><br><span class="line">kubectl create namespace prod</span><br></pre></td></tr></table></figure>
+
+<p>定义networkpolicy规则</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">networking.k8s.io/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">NetworkPolicy</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">	<span class="attr">name:</span> <span class="string">deny-all-ingress</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">	<span class="attr">podSelector:</span> <span class="string">&#123;&#125;</span></span><br><span class="line">	<span class="attr">policyTypes:</span></span><br><span class="line">	<span class="bullet">-</span> <span class="string">Ingress</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#应用于dev名称空间</span></span><br><span class="line"><span class="string">kubectl</span> <span class="string">apply</span> <span class="string">-f</span> <span class="string">ingress-def.yaml</span> <span class="string">-n</span> <span class="string">dev</span></span><br><span class="line">	</span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line"><span class="string">podSelector为空表示选择所有名称空间中的pod</span></span><br><span class="line"><span class="string">policyTypes选择了ingress而没定义ingress表示使用ingress默认规则，即拒绝所有请求</span></span><br><span class="line"><span class="string">如果明确定义ingress但内容为空，则表示允许全部，如下所示</span></span><br><span class="line">	<span class="attr">ingree:</span></span><br><span class="line">	<span class="bullet">-</span> <span class="string">&#123;&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>在dev名称空间下创建pod</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Pod</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">	<span class="attr">name:</span> <span class="string">pod1</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">	<span class="attr">containers:</span></span><br><span class="line">	<span class="bullet">-</span> <span class="attr">name:</span> <span class="string">nginx</span></span><br><span class="line">	  <span class="attr">image:</span> <span class="string">nginx</span></span><br><span class="line">	  <span class="attr">imagePullPolicy:</span> <span class="string">IfNotPresent</span></span><br><span class="line">	  </span><br><span class="line"><span class="comment">#应用</span></span><br><span class="line"><span class="string">kubectl</span> <span class="string">apply</span> <span class="string">-f</span> <span class="string">pod-a.yaml</span> <span class="string">-n</span> <span class="string">dev</span></span><br><span class="line"><span class="string">kubectl</span> <span class="string">apply</span> <span class="string">-f</span> <span class="string">pod-a.yaml</span> <span class="string">-n</span> <span class="string">prod</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line"><span class="string">上述创建好后可以使用master访问prod名称空间的prod，但无法访问dev名称空间的pod</span></span><br></pre></td></tr></table></figure>
+
+<p>修改dev名称空间下的ingress规则，允许外部访问</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#将pod1打标签，用于被ingress的podSelector控制</span></span><br><span class="line"><span class="string">kubectl</span> <span class="string">label</span> <span class="string">pods</span> <span class="string">pod1</span> <span class="string">app=nginx</span> <span class="string">-n</span> <span class="string">dev</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">networking.k8s.io/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">NetworkPolicy</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">	<span class="attr">name:</span> <span class="string">allow-nginx-ingress</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">	<span class="attr">podSelector:</span></span><br><span class="line">		<span class="attr">matchLabels:</span></span><br><span class="line">			<span class="attr">app:</span> <span class="string">nginx</span></span><br><span class="line">	<span class="attr">ingress:</span></span><br><span class="line">	<span class="bullet">-</span> <span class="attr">from:</span></span><br><span class="line">	  <span class="bullet">-</span> <span class="attr">ipBlock:</span></span><br><span class="line">	  		<span class="attr">cidr:</span> <span class="number">10.244</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br><span class="line">	  		<span class="attr">except:</span></span><br><span class="line">	  		<span class="bullet">-</span> <span class="number">10.244</span><span class="number">.1</span><span class="number">.2</span><span class="string">/32</span></span><br><span class="line">	  <span class="attr">ports:</span></span><br><span class="line">	  <span class="bullet">-</span> <span class="attr">protocol:</span> <span class="string">TCP</span></span><br><span class="line">	    <span class="attr">port:</span> <span class="number">80</span></span><br><span class="line">	  <span class="bullet">-</span> <span class="attr">protocol:</span> <span class="string">TCP</span></span><br><span class="line">	    <span class="attr">port:</span> <span class="number">443</span></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line"><span class="string">上述ingress规则表示允许10.244.0.0/16网段的主机且标签app为nginx访问，但不允许10.244.1.2/32访问，对外开放端口为tcp/80，tcp/443</span></span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/kubernetes/" rel="tag"># kubernetes</a>
+              <a href="/tags/VxLAN/" rel="tag"># VxLAN</a>
+              <a href="/tags/flannel/" rel="tag"># flannel</a>
+              <a href="/tags/canal/" rel="tag"># canal</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/05/k8s-5-%E8%AE%A4%E8%AF%81/" rel="prev" title="k8s(5)-认证">
+      <i class="fa fa-chevron-left"></i> k8s(5)-认证
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#基础"><span class="nav-number">1.</span> <span class="nav-text">基础</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#通信方式"><span class="nav-number">1.1.</span> <span class="nav-text">通信方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#实现格式"><span class="nav-number">1.2.</span> <span class="nav-text">实现格式</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Flannel"><span class="nav-number">2.</span> <span class="nav-text">Flannel</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#配置参数"><span class="nav-number">2.1.</span> <span class="nav-text">配置参数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#通信流程"><span class="nav-number">2.2.</span> <span class="nav-text">通信流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#VxLAN"><span class="nav-number">2.3.</span> <span class="nav-text">VxLAN</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#host-gw"><span class="nav-number">2.4.</span> <span class="nav-text">host-gw</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Canal"><span class="nav-number">3.</span> <span class="nav-text">Canal</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#部署"><span class="nav-number">3.1.</span> <span class="nav-text">部署</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置策略"><span class="nav-number">3.2.</span> <span class="nav-text">配置策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#资源定义"><span class="nav-number">3.3.</span> <span class="nav-text">资源定义</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#实例"><span class="nav-number">3.4.</span> <span class="nav-text">实例</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">46</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">71</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
