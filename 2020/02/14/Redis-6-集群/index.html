@@ -54,7 +54,7 @@
 <meta property="og:description" content="一致性hash考虑一种场景：现在后端有多个redis服务器提供缓存功能，客户端向redis写时想要实现在不同的redis服务器中写，从而使得redis服务器的压力减少，这里就需要算法来将数据映射到某个redis服务器上，从而引出一致性hash算法。">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2020-02-14T08:27:10.000Z">
-<meta property="article:modified_time" content="2020-02-14T08:31:03.062Z">
+<meta property="article:modified_time" content="2020-02-19T02:12:36.044Z">
 <meta property="article:author" content="Frdqy">
 <meta property="article:tag" content="redis">
 <meta property="article:tag" content="predixy">
@@ -155,12 +155,12 @@
   </li>
         <li class="menu-item menu-item-categories">
 
-    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">5</span></a>
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">7</span></a>
 
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">60</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">65</span></a>
 
   </li>
       <li class="menu-item menu-item-search">
@@ -236,18 +236,24 @@
                 <i class="fa fa-calendar-o"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2020-02-14 16:27:10 / 修改时间：16:31:03" itemprop="dateCreated datePublished" datetime="2020-02-14T16:27:10+08:00">2020-02-14</time>
+              <time title="创建时间：2020-02-14 16:27:10" itemprop="dateCreated datePublished" datetime="2020-02-14T16:27:10+08:00">2020-02-14</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-19 10:12:36" itemprop="dateModified" datetime="2020-02-19T10:12:36+08:00">2020-02-19</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="fa fa-folder-o"></i>
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index">
-                    <span itemprop="name">Linux</span>
+                  <a href="/categories/Redis/" itemprop="url" rel="index">
+                    <span itemprop="name">Redis</span>
                   </a>
                 </span>
             </span>
@@ -383,14 +389,14 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">60</span>
+          <span class="site-state-item-count">65</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-count">7</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">

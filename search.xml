@@ -1,17 +1,186 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>10矩阵中的路径</title>
+    <url>/2020/02/19/10%E7%9F%A9%E9%98%B5%E4%B8%AD%E7%9A%84%E8%B7%AF%E5%BE%84/</url>
+    <content><![CDATA[<h3 id="题目"><a href="#题目" class="headerlink" title="题目"></a>题目</h3><p>请设计一个函数，用来判断在一个矩阵中是否存在一条包含某字符串所有字符的路径。路径可以从矩阵中的任意一格开始，每一步可以在矩阵中向左、右、上、下移动一格。如果一条路径经过了矩阵的某一格，那么该路径不能再次进入该格子。例如，在下面的3×4的矩阵中包含一条字符串“bfce”的路径（路径中的字母用加粗标出）。</p>
+<a id="more"></a>
+<p>[ [ “a”,”<strong>b</strong>“,”c”,”e” ],<br>[ “s”,”<strong>f</strong>“,”<strong>c</strong>“,”s” ],<br>[ “a”,”d”,”<strong>e</strong>“,”e” ] ]</p>
+<p>但矩阵中不包含字符串“abfb”的路径，因为字符串的第一个字符b占据了矩阵中的第一行第二个格子之后，路径不能再次进入这个格子。</p>
+<p><strong>示例 1：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">输入：board &#x3D; [[&quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;E&quot;],[&quot;S&quot;,&quot;F&quot;,&quot;C&quot;,&quot;S&quot;],[&quot;A&quot;,&quot;D&quot;,&quot;E&quot;,&quot;E&quot;]], word &#x3D; &quot;ABCCED&quot;</span><br><span class="line">输出：true</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例 2：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">输入：board &#x3D; [[&quot;a&quot;,&quot;b&quot;],[&quot;c&quot;,&quot;d&quot;]], word &#x3D; &quot;abcd&quot;</span><br><span class="line">输出：false</span><br></pre></td></tr></table></figure>
+
+<p><strong>提示：</strong></p>
+<ul>
+<li><code>1 &lt;= board.length &lt;= 200</code></li>
+<li><code>1 &lt;= board[i].length &lt;= 200</code></li>
+</ul>
+<h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">exist</span><span class="params">(self, board, word)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type board: List[List[str]]</span></span><br><span class="line"><span class="string">        :type word: str</span></span><br><span class="line"><span class="string">        :rtype: bool</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> range(len(board)):</span><br><span class="line">            <span class="keyword">for</span> j <span class="keyword">in</span> range(len(board[<span class="number">0</span>])):</span><br><span class="line">                <span class="keyword">if</span> self.backtrace(board, word, <span class="number">0</span>, i, j):</span><br><span class="line">                    <span class="keyword">return</span> <span class="literal">True</span></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">False</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">backtrace</span><span class="params">(self, board, word, index, i, j)</span>:</span></span><br><span class="line">        <span class="keyword">if</span> board[i][j] != word[index]:</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">False</span></span><br><span class="line">        <span class="keyword">if</span> index + <span class="number">1</span> == len(word):</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">True</span></span><br><span class="line">        tmp = board[i][j]</span><br><span class="line">        board[i][j] = <span class="number">0</span></span><br><span class="line">        index += <span class="number">1</span></span><br><span class="line">        <span class="keyword">if</span> i &gt; <span class="number">0</span> <span class="keyword">and</span> self.backtrace(board, word, index, i - <span class="number">1</span>, j) <span class="keyword">or</span> \</span><br><span class="line">                j &gt; <span class="number">0</span> <span class="keyword">and</span> self.backtrace(board, word, index, i, j - <span class="number">1</span>) <span class="keyword">or</span> \</span><br><span class="line">                i &lt; len(board) - <span class="number">1</span> <span class="keyword">and</span> self.backtrace(board, word, index, i + <span class="number">1</span>, j) <span class="keyword">or</span> \</span><br><span class="line">                j &lt; len(board[<span class="number">0</span>]) - <span class="number">1</span> <span class="keyword">and</span> self.backtrace(board, word, index, i, j + <span class="number">1</span>):</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">True</span></span><br><span class="line">        board[i][j] = tmp</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">False</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="C"><a href="#C" class="headerlink" title="C"></a>C</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">//主要思路是回溯，从第一位开始匹配，需要记录待匹配的字符串的下标用于比较是否匹配结束</span></span><br><span class="line"><span class="comment">//进入回溯后判断当前待匹配下标和矩阵的值是否相等，相等就继续上下左右回溯(注意区间)</span></span><br><span class="line"><span class="comment">//上下左右均未找到则恢复矩阵</span></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">backtrack</span><span class="params">(<span class="keyword">char</span>** board, <span class="keyword">int</span> boardSize, <span class="keyword">int</span>* boardColSize, <span class="keyword">char</span>* <span class="keyword">word</span>, <span class="keyword">int</span> index, <span class="keyword">int</span> i, <span class="keyword">int</span> j)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">if</span> (board[i][j] != <span class="keyword">word</span>[index])	<span class="comment">//当前字母不相等</span></span><br><span class="line">		<span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">	<span class="keyword">if</span> (index + <span class="number">1</span> == <span class="built_in">strlen</span>(<span class="keyword">word</span>))	<span class="comment">//最后一个字母相等，路径正确</span></span><br><span class="line">		<span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">	<span class="keyword">char</span> tmp = board[i][j];	<span class="comment">//暂存当前</span></span><br><span class="line">	board[i][j] = <span class="number">0</span>;	<span class="comment">//避免重复使用</span></span><br><span class="line">	index++;</span><br><span class="line">	<span class="keyword">if</span> (</span><br><span class="line">		(i &gt; <span class="number">0</span> &amp;&amp; backtrack(board, boardSize, boardColSize, <span class="keyword">word</span>, index, i - <span class="number">1</span>, j))</span><br><span class="line">		|| (j &gt; <span class="number">0</span> &amp;&amp; backtrack(board, boardSize, boardColSize, <span class="keyword">word</span>, index, i, j - <span class="number">1</span>))</span><br><span class="line">		|| (i &lt; boardSize - <span class="number">1</span> &amp;&amp; backtrack(board, boardSize, boardColSize, <span class="keyword">word</span>, index, i + <span class="number">1</span>, j))</span><br><span class="line">		|| (j &lt; *boardColSize - <span class="number">1</span> &amp;&amp; backtrack(board, boardSize, boardColSize, <span class="keyword">word</span>, index, i, j + <span class="number">1</span>))</span><br><span class="line">		)</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">	board[i][j] = tmp;	<span class="comment">//没找到，进行恢复</span></span><br><span class="line">	<span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">exist</span><span class="params">(<span class="keyword">char</span>** board, <span class="keyword">int</span> boardSize, <span class="keyword">int</span>* boardColSize, <span class="keyword">char</span>* <span class="keyword">word</span>)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; boardSize; i++)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> j = <span class="number">0</span>; j &lt; *boardColSize; j++)</span><br><span class="line">		&#123;</span><br><span class="line">			<span class="keyword">if</span> (backtrack(board, boardSize, boardColSize, <span class="keyword">word</span>, <span class="number">0</span>, i, j))</span><br><span class="line">				<span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>剑指offer</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>09旋转数组的最小数字</title>
+    <url>/2020/02/19/09%E6%97%8B%E8%BD%AC%E6%95%B0%E7%BB%84%E7%9A%84%E6%9C%80%E5%B0%8F%E6%95%B0%E5%AD%97/</url>
+    <content><![CDATA[<h3 id="题目"><a href="#题目" class="headerlink" title="题目"></a>题目</h3><p>把一个数组最开始的若干个元素搬到数组的末尾，我们称之为数组的旋转。输入一个递增排序的数组的一个旋转，输出旋转数组的最小元素。例如，数组 [3,4,5,1,2] 为 [1,2,3,4,5] 的一个旋转，该数组的最小值为1。  </p>
+<a id="more"></a>
+<p><strong>示例 1：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[3,4,5,1,2]</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">1</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例 2：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[2,2,2,0,1]</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">0</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">minArray</span><span class="params">(self, numbers)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type numbers: List[int]</span></span><br><span class="line"><span class="string">        :rtype: int</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        low=<span class="number">0</span></span><br><span class="line">        high=len(numbers)<span class="number">-1</span></span><br><span class="line">        <span class="keyword">while</span> low&lt;high:</span><br><span class="line">            mid=(low+high)/<span class="number">2</span></span><br><span class="line">            <span class="keyword">if</span> numbers[mid] &lt; numbers[high]:</span><br><span class="line">                high=mid</span><br><span class="line">            <span class="keyword">elif</span> numbers[mid] &gt; numbers[high]:</span><br><span class="line">                low=mid+<span class="number">1</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                high-=<span class="number">1</span></span><br><span class="line">        <span class="keyword">return</span> numbers[low]</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="C"><a href="#C" class="headerlink" title="C"></a>C</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">//若中间的数比最后一个数大，最小值在右边</span></span><br><span class="line"><span class="comment">//若中间的数比最后一个数小，最小值在左边</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">minArray</span><span class="params">(<span class="keyword">int</span>* numbers, <span class="keyword">int</span> numbersSize)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span> low = <span class="number">0</span>, high = numbersSize - <span class="number">1</span>;</span><br><span class="line">	<span class="keyword">while</span> (low &lt; high)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="keyword">int</span> mid = (high + low) / <span class="number">2</span>;</span><br><span class="line">		<span class="keyword">if</span> (numbers[mid]&lt;numbers[high])</span><br><span class="line">		&#123;</span><br><span class="line">			high = mid;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span> <span class="keyword">if</span> (numbers[mid]&gt;numbers[high])</span><br><span class="line">		&#123;</span><br><span class="line">			low = mid + <span class="number">1</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span></span><br><span class="line">		&#123;</span><br><span class="line">			high--;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> numbers[low];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>剑指offer</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>08青蛙跳台阶</title>
+    <url>/2020/02/19/08%E9%9D%92%E8%9B%99%E8%B7%B3%E5%8F%B0%E9%98%B6/</url>
+    <content><![CDATA[<h3 id="题目"><a href="#题目" class="headerlink" title="题目"></a>题目</h3><p>一只青蛙一次可以跳上1级台阶，也可以跳上2级台阶。求该青蛙跳上一个 n 级的台阶总共有多少种跳法。</p>
+<p>答案需要取模 1e9+7（1000000007），如计算初始结果为：1000000008，请返回 1。</p>
+<a id="more"></a>
+<p><strong>示例 1：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">n &#x3D; 2</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">2</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例 2：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">n &#x3D; 7</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">21</span><br></pre></td></tr></table></figure>
+
+<p><strong>提示：</strong></p>
+<ul>
+<li><code>0 &lt;= n &lt;= 100</code></li>
+</ul>
+<h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment">#同斐波拉契一样</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">numWays</span><span class="params">(self, n)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type n: int</span></span><br><span class="line"><span class="string">        :rtype: int</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        a=[<span class="number">1</span>,<span class="number">1</span>,<span class="number">2</span>]</span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">3</span>,n+<span class="number">1</span>):</span><br><span class="line">            a.append((a[i<span class="number">-1</span>]+a[i<span class="number">-2</span>])%<span class="number">1000000007</span>)</span><br><span class="line">        <span class="keyword">return</span> a[n]</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="C"><a href="#C" class="headerlink" title="C"></a>C</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">//与斐波拉契一样</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">numWays</span><span class="params">(<span class="keyword">int</span> n)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span>* a = (<span class="keyword">int</span>*)<span class="built_in">malloc</span>(<span class="number">100000</span> * <span class="keyword">sizeof</span>(<span class="keyword">int</span>));</span><br><span class="line">	a[<span class="number">0</span>] = <span class="number">1</span>;</span><br><span class="line">	a[<span class="number">1</span>] = <span class="number">1</span>;</span><br><span class="line">	a[<span class="number">2</span>] = <span class="number">2</span>;</span><br><span class="line">	<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">3</span>; i &lt; n + <span class="number">1</span>; i++)</span><br><span class="line">	&#123;</span><br><span class="line">		a[i] = (a[i - <span class="number">1</span>] + a[i - <span class="number">2</span>]) % <span class="number">1000000007</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> a[n];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>剑指offer</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>07斐波拉契数列</title>
+    <url>/2020/02/19/07%E6%96%90%E6%B3%A2%E6%8B%89%E5%A5%91%E6%95%B0%E5%88%97/</url>
+    <content><![CDATA[<h3 id="题目"><a href="#题目" class="headerlink" title="题目"></a>题目</h3><p>写一个函数，输入 n ，求斐波那契（Fibonacci）数列的第 n 项。斐波那契数列的定义如下：</p>
+<p>F(0) = 0,   F(1) = 1<br>F(N) = F(N - 1) + F(N - 2), 其中 N &gt; 1.<br>斐波那契数列由 0 和 1 开始，之后的斐波那契数就是由之前的两数相加而得出。</p>
+<a id="more"></a>
+<p>答案需要取模 1e9+7（1000000007），如计算初始结果为：1000000008，请返回 1。</p>
+<p><strong>示例 1：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">n &#x3D; 2</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">1</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例 2：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">n &#x3D; 5</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">5</span><br></pre></td></tr></table></figure>
+
+<p><strong>提示：</strong></p>
+<ul>
+<li><code>0 &lt;= n &lt;= 100</code></li>
+</ul>
+<h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment">#不能递归，复杂度太高</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span><span class="params">(object)</span>:</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">fib</span><span class="params">(self, n)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type n: int</span></span><br><span class="line"><span class="string">        :rtype: int</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">if</span> n&lt;<span class="number">2</span>:</span><br><span class="line">            <span class="keyword">return</span> n</span><br><span class="line">        fb=[<span class="number">0</span>,<span class="number">1</span>]</span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">2</span>,n+<span class="number">1</span>):</span><br><span class="line">            fb.append((fb[i<span class="number">-1</span>]+fb[i<span class="number">-2</span>])%<span class="number">1000000007</span>)</span><br><span class="line">        <span class="keyword">return</span> fb[n]</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="C"><a href="#C" class="headerlink" title="C"></a>C</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">//非递归 斐波拉契</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fib</span><span class="params">(<span class="keyword">int</span> n)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span>* a = (<span class="keyword">int</span>*)<span class="built_in">malloc</span>(<span class="number">1000000</span> * <span class="keyword">sizeof</span>(<span class="keyword">int</span>));</span><br><span class="line">	a[<span class="number">0</span>] = <span class="number">0</span>;</span><br><span class="line">	a[<span class="number">1</span>] = <span class="number">1</span>;</span><br><span class="line">	<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">2</span>; i &lt; n + <span class="number">1</span>; i++)</span><br><span class="line">	&#123;</span><br><span class="line">		a[i] = (a[i - <span class="number">1</span>] + a[i - <span class="number">2</span>]) % <span class="number">1000000007</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> a[n];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>剑指offer</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>06两个栈实现队列</title>
+    <url>/2020/02/19/06%E4%B8%A4%E4%B8%AA%E6%A0%88%E5%AE%9E%E7%8E%B0%E9%98%9F%E5%88%97/</url>
+    <content><![CDATA[<h3 id="题目"><a href="#题目" class="headerlink" title="题目"></a>题目</h3><p>用两个栈实现一个队列。队列的声明如下，请实现它的两个函数 appendTail 和 deleteHead ，分别完成在队列尾部插入整数和在队列头部删除整数的功能。(若队列中没有元素，deleteHead 操作返回 -1 )</p>
+<a id="more"></a>
+
+<p><strong>示例 1：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[&quot;CQueue&quot;,&quot;appendTail&quot;,&quot;deleteHead&quot;,&quot;deleteHead&quot;]</span><br><span class="line">[[],[3],[],[]]</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[null,null,3,-1]</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例 2：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[&quot;CQueue&quot;,&quot;deleteHead&quot;,&quot;appendTail&quot;,&quot;appendTail&quot;,&quot;deleteHead&quot;,&quot;deleteHead&quot;]</span><br><span class="line">[[],[],[5],[2],[],[]]</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[null,-1,null,null,5,2]</span><br></pre></td></tr></table></figure>
+
+<p><strong>提示：</strong></p>
+<ul>
+<li><code>1 &lt;= values &lt;= 10000</code></li>
+<li><code>最多会对 appendTail、deleteHead 进行 10000 次调用</code></li>
+</ul>
+<h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment">#一个栈用于入队，另一个栈将前一个栈倒序后再pop即可</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">CQueue</span><span class="params">(object)</span>:</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self)</span>:</span></span><br><span class="line">        self.instack=[]</span><br><span class="line">        self.outstack=[]</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">appendTail</span><span class="params">(self, value)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type value: int</span></span><br><span class="line"><span class="string">        :rtype: None</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        self.instack.append(value)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">deleteHead</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :rtype: int</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="comment">#第一次删除时执行栈倒转，后面不用再执行了</span></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> self.outstack:</span><br><span class="line">            <span class="keyword">while</span> self.instack:</span><br><span class="line">                self.outstack.append(self.instack.pop())</span><br><span class="line">        <span class="keyword">if</span> self.outstack:</span><br><span class="line">            <span class="keyword">return</span> self.outstack.pop()</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            <span class="keyword">return</span> <span class="number">-1</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="C"><a href="#C" class="headerlink" title="C"></a>C</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">	<span class="keyword">int</span>* inStack;</span><br><span class="line">	<span class="keyword">int</span> intop;</span><br><span class="line">	<span class="keyword">int</span>* outStack;</span><br><span class="line">	<span class="keyword">int</span> outtop;</span><br><span class="line">&#125;CQueue;</span><br><span class="line"></span><br><span class="line"><span class="function">CQueue* <span class="title">cQueueCreate</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	CQueue* obj = (CQueue*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(CQueue));</span><br><span class="line">	obj-&gt;inStack = (<span class="keyword">int</span>*)<span class="built_in">malloc</span>(<span class="number">10000</span> * <span class="keyword">sizeof</span>(<span class="keyword">int</span>));</span><br><span class="line">	obj-&gt;intop = <span class="number">-1</span>;</span><br><span class="line">	obj-&gt;outStack = (<span class="keyword">int</span>*)<span class="built_in">malloc</span>(<span class="number">10000</span> * <span class="keyword">sizeof</span>(<span class="keyword">int</span>));</span><br><span class="line">	obj-&gt;outtop = <span class="number">-1</span>;</span><br><span class="line">	<span class="keyword">return</span> obj;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">cQueueAppendTail</span><span class="params">(CQueue* obj, <span class="keyword">int</span> value)</span> </span>&#123;</span><br><span class="line">	obj-&gt;inStack[++obj-&gt;intop] = value;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">cQueueDeleteHead</span><span class="params">(CQueue* obj)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">if</span> (obj-&gt;intop == <span class="number">-1</span> &amp;&amp; obj-&gt;outtop == <span class="number">-1</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span> <span class="keyword">if</span> (obj-&gt;outtop == <span class="number">-1</span>)		<span class="comment">//第一次删除时执行栈倒转，后面不用再执行了</span></span><br><span class="line">	&#123;</span><br><span class="line">		<span class="keyword">while</span> (obj-&gt;intop &gt; <span class="number">-1</span>)</span><br><span class="line">		&#123;</span><br><span class="line">			obj-&gt;outStack[++obj-&gt;outtop] = obj-&gt;inStack[obj-&gt;intop--];</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> obj-&gt;outStack[obj-&gt;outtop--];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">cQueueFree</span><span class="params">(CQueue* obj)</span> </span>&#123;</span><br><span class="line">	<span class="built_in">free</span>(obj-&gt;inStack);</span><br><span class="line">	obj-&gt;inStack = <span class="literal">NULL</span>;</span><br><span class="line">	<span class="built_in">free</span>(obj-&gt;outStack);</span><br><span class="line">	obj-&gt;outStack = <span class="literal">NULL</span>;</span><br><span class="line">	<span class="built_in">free</span>(obj);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>剑指offer</category>
+      </categories>
+  </entry>
+  <entry>
     <title>05重建二叉树</title>
     <url>/2020/02/18/05%E9%87%8D%E5%BB%BA%E4%BA%8C%E5%8F%89%E6%A0%91/</url>
     <content><![CDATA[<h3 id="题目"><a href="#题目" class="headerlink" title="题目"></a>题目</h3><p>输入某二叉树的前序遍历和中序遍历的结果，请重建该二叉树。假设输入的前序遍历和中序遍历的结果中都不含重复的数字。</p>
 <a id="more"></a>
 
+<p><strong>例如：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">前序遍历 preorder &#x3D; [3,9,20,15,7]</span><br><span class="line">中序遍历 inorder &#x3D; [9,3,15,20,7]</span><br><span class="line">返回如下的二叉树：</span><br><span class="line"></span><br><span class="line">    3</span><br><span class="line">   &#x2F; \</span><br><span class="line">  9  20</span><br><span class="line">      &#x2F;  \</span><br><span class="line">    15   7</span><br></pre></td></tr></table></figure>
 
-<p>例如，给出</p>
-<p>前序遍历 preorder = [3,9,20,15,7]<br>中序遍历 inorder = [9,3,15,20,7]<br>返回如下的二叉树：</p>
-<p>​    3<br>   / <br>  9  20<br>​      /  <br>​    15   7</p>
-<p>限制：</p>
-<p>0 &lt;= 节点个数 &lt;= 5000</p>
+<p><strong>限制：</strong></p>
+<ul>
+<li><code>0 &lt;= 节点个数 &lt;= 5000</code></li>
+</ul>
 <h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment">#根据前序和中序建树，首先前序第一个元素为根，按这个根找到中序的索引，根据索引将中序切分成两个，前序就依次往后进行递归</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TreeNode</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, x)</span>:</span></span><br><span class="line">        self.val = x</span><br><span class="line">        self.left = <span class="literal">None</span></span><br><span class="line">        self.right = <span class="literal">None</span></span><br><span class="line">        </span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">buildTree</span><span class="params">(self, preorder: List[int], inorder: List[int])</span> -&gt; TreeNode:</span></span><br><span class="line">        <span class="keyword">if</span> len(inorder) == <span class="number">0</span>:</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">None</span></span><br><span class="line"></span><br><span class="line">        root = TreeNode(preorder[<span class="number">0</span>])</span><br><span class="line">        <span class="comment"># 找中序根节点索引下标，将树拆开</span></span><br><span class="line">        idx = inorder.index(preorder[<span class="number">0</span>])</span><br><span class="line">        <span class="comment"># 左子树</span></span><br><span class="line">        root.left = self.buildTree(preorder[<span class="number">1</span>:idx+<span class="number">1</span>], inorder[:idx])</span><br><span class="line">        <span class="comment"># 右子树</span></span><br><span class="line">        root.right = self.buildTree(preorder[idx+<span class="number">1</span>:], inorder[idx+<span class="number">1</span>:])</span><br><span class="line">        <span class="keyword">return</span> root</span><br></pre></td></tr></table></figure>
 
 
@@ -29,11 +198,17 @@
     <content><![CDATA[<h3 id="题目"><a href="#题目" class="headerlink" title="题目"></a>题目</h3><p>输入一个链表的头节点，从尾到头反过来返回每个节点的值（用数组返回）。</p>
 <a id="more"></a>
 
+<p><strong>示例 1：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">head &#x3D; [1,3,2]</span><br></pre></td></tr></table></figure>
 
-<p>示例 1：</p>
-<p>输入：head = [1,3,2]<br>输出：[2,3,1]</p>
-<p>限制：</p>
-<p>0 &lt;= 链表长度 &lt;= 10000</p>
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[2,3,1]</span><br></pre></td></tr></table></figure>
+
+<p><strong>限制：</strong></p>
+<ul>
+<li><code>0 &lt;= 链表长度 &lt;= 10000</code></li>
+</ul>
 <h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment">#将链表放到列表中，列表从后往前放到新的列表中。尽量不使用reverse</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ListNode</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, x)</span>:</span></span><br><span class="line">        self.val = x</span><br><span class="line">        self.next = <span class="literal">None</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">reversePrint</span><span class="params">(self, head:ListNode)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type head: ListNode</span></span><br><span class="line"><span class="string">        :rtype: List[int]</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        sc=[]</span><br><span class="line">        result=[]</span><br><span class="line">        hd=head</span><br><span class="line">        <span class="keyword">while</span> hd:</span><br><span class="line">            sc.append(hd.val)</span><br><span class="line">            hd=hd.next</span><br><span class="line">        <span class="keyword">while</span> sc:</span><br><span class="line">            result.append(sc.pop(<span class="number">-1</span>))</span><br><span class="line">        <span class="keyword">return</span> result</span><br></pre></td></tr></table></figure>
 
 
@@ -51,11 +226,17 @@
     <content><![CDATA[<h3 id="题目"><a href="#题目" class="headerlink" title="题目"></a>题目</h3><p>请实现一个函数，把字符串 s 中的每个空格替换成”%20”。</p>
 <a id="more"></a>
 
+<p><strong>示例 1：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">s &#x3D; &quot;We are happy.&quot;</span><br></pre></td></tr></table></figure>
 
-<p>示例 1：</p>
-<p>输入：s = “We are happy.”<br>输出：”We%20are%20happy.”</p>
-<p>限制：</p>
-<p>0 &lt;= s 的长度 &lt;= 10000</p>
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&quot;We%20are%20happy.&quot;</span><br></pre></td></tr></table></figure>
+
+<p><strong>限制：</strong></p>
+<ul>
+<li><code>0 &lt;= s 的长度 &lt;= 10000</code></li>
+</ul>
 <h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment">#字符串转列表判断完再拼成字符串</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">replaceSpace</span><span class="params">(self, s: str)</span> -&gt; str:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type s: str</span></span><br><span class="line"><span class="string">        :rtype: str</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        lst = list(s)</span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> range(len(lst)):</span><br><span class="line">            <span class="keyword">if</span> lst[i] == <span class="string">' '</span>:</span><br><span class="line">                lst[i] = <span class="string">'%20'</span></span><br><span class="line">        s = <span class="string">''</span>.join(lst)</span><br><span class="line">        <span class="keyword">return</span> s</span><br></pre></td></tr></table></figure>
 
 
@@ -73,14 +254,16 @@
     <content><![CDATA[<h3 id="题目"><a href="#题目" class="headerlink" title="题目"></a>题目</h3><p>在一个 n * m 的二维数组中，每一行都按照从左到右递增的顺序排序，每一列都按照从上到下递增的顺序排序。请完成一个函数，输入这样的一个二维数组和一个整数，判断数组中是否含有该整数。</p>
 <a id="more"></a>
 
+<p><strong>示例:</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">现有矩阵 matrix 如下：</span><br><span class="line"></span><br><span class="line">[</span><br><span class="line">  [1,   4,  7, 11, 15],</span><br><span class="line">  [2,   5,  8, 12, 19],</span><br><span class="line">  [3,   6,  9, 16, 22],</span><br><span class="line">  [10, 13, 14, 17, 24],</span><br><span class="line">  [18, 21, 23, 26, 30]</span><br><span class="line">]</span><br><span class="line">给定 target &#x3D; 5，返回 true。</span><br><span class="line"></span><br><span class="line">给定 target &#x3D; 20，返回 false。</span><br></pre></td></tr></table></figure>
 
-<p>示例:</p>
-<p>现有矩阵 matrix 如下：</p>
-<p>[<br>  [1,   4,  7, 11, 15],<br>  [2,   5,  8, 12, 19],<br>  [3,   6,  9, 16, 22],<br>  [10, 13, 14, 17, 24],<br>  [18, 21, 23, 26, 30]<br>]<br>给定 target = 5，返回 true。</p>
-<p>给定 target = 20，返回 false。</p>
-<p>限制：</p>
-<p>0 &lt;= n &lt;= 1000</p>
-<p>0 &lt;= m &lt;= 1000</p>
+<p><strong>限制：</strong></p>
+<ul>
+<li><p><code>0 &lt;= n &lt;= 1000</code></p>
+</li>
+<li><p><code>0 &lt;= m &lt;= 1000</code></p>
+</li>
+</ul>
 <h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment">#上下都有序，可以从第一排的最后一个开始比较，如果大于它说明大于整个第一排的元素，行指针加1，直到比较到一个小于的，再列指针减少，到最小仍未匹配说明不存在</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">findNumberIn2DArray</span><span class="params">(self, matrix, target)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type matrix: List[List[int]]</span></span><br><span class="line"><span class="string">        :type target: int</span></span><br><span class="line"><span class="string">        :rtype: bool</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">if</span> matrix==[]:</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">False</span></span><br><span class="line">        i,j=[<span class="number">0</span>,len(matrix[<span class="number">0</span>])<span class="number">-1</span>]</span><br><span class="line">        <span class="keyword">while</span> i &lt; len(matrix) <span class="keyword">and</span> j&gt;=<span class="number">0</span>:</span><br><span class="line">            <span class="keyword">if</span> matrix[i][j]==target:</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">True</span></span><br><span class="line">            <span class="keyword">elif</span> target &gt; matrix[i][j]:</span><br><span class="line">                i+=<span class="number">1</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                j-=<span class="number">1</span></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">False</span></span><br><span class="line">    </span><br><span class="line"><span class="comment">#测试用例有一个[]和[[]]，需要特殊化处理；或者先判断长度</span></span><br></pre></td></tr></table></figure>
 
 
@@ -99,10 +282,17 @@
 <a id="more"></a>
 
 <p>在一个长度为 n 的数组 nums 里的所有数字都在 0～n-1 的范围内。数组中某些数字是重复的，但不知道有几个数字重复了，也不知道每个数字重复了几次。请找出数组中任意一个重复的数字。</p>
-<p>示例 1：</p>
-<p>输入：<br>[2, 3, 1, 0, 2, 5, 3]<br>输出：2 或 3 </p>
-<p>限制：</p>
-<p>2 &lt;= n &lt;= 100000</p>
+<p><strong>示例 1：</strong></p>
+<p><strong>输入：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[2, 3, 1, 0, 2, 5, 3]</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">2 或 3</span><br></pre></td></tr></table></figure>
+
+<p><strong>限制：</strong></p>
+<ul>
+<li><code>2 &lt;= n &lt;= 100000</code></li>
+</ul>
 <h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment">#标记已出现的数字个数，并同时判断</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">findRepeatNumber</span><span class="params">(self, nums:List[int])</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type nums: List[int]</span></span><br><span class="line"><span class="string">        :rtype: int</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        arr=[<span class="number">0</span>]*len(nums)</span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> range(len(nums)):</span><br><span class="line">            arr[nums[i]]+=<span class="number">1</span></span><br><span class="line">            <span class="keyword">if</span>(arr[nums[i]]&gt;<span class="number">1</span>):</span><br><span class="line">                <span class="keyword">return</span> i</span><br><span class="line"></span><br><span class="line">            </span><br><span class="line"><span class="comment">#优化：使用字典</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">findRepeatNumber</span><span class="params">(self, nums:List[int])</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type nums: List[int]</span></span><br><span class="line"><span class="string">        :rtype: int</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        repeatDict = &#123;&#125;</span><br><span class="line">        <span class="keyword">for</span> num <span class="keyword">in</span> nums:</span><br><span class="line">            <span class="keyword">if</span> num <span class="keyword">not</span> <span class="keyword">in</span> repeatDict:</span><br><span class="line">                repeatDict[num] = <span class="number">1</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                <span class="keyword">return</span> num</span><br><span class="line">        </span><br><span class="line"><span class="comment">#优化：原地hash</span></span><br><span class="line"><span class="comment">#如果num[i]的值和以num[i]为下标的值相等，那么就出现过，如果不相等就元素互换</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">findRepeatNumber</span><span class="params">(self, nums: List[int])</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :type nums: List[int]</span></span><br><span class="line"><span class="string">        :rtype: int</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> range(len(nums)):</span><br><span class="line">            <span class="keyword">while</span> i != nums[i]:</span><br><span class="line">                <span class="keyword">if</span> nums[i] == nums[nums[i]]:</span><br><span class="line">                    <span class="keyword">return</span> nums[i]</span><br><span class="line">                <span class="keyword">else</span>:</span><br><span class="line">                    nums[nums[i]], nums[i] = nums[i], nums[nums[i]]</span><br></pre></td></tr></table></figure>
 
 
@@ -137,7 +327,7 @@
 
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Redis</category>
       </categories>
       <tags>
         <tag>redis</tag>
@@ -178,7 +368,7 @@
 
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Redis</category>
       </categories>
       <tags>
         <tag>redis</tag>
@@ -213,7 +403,7 @@
 <h4 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h4><p>如果RDB和AOF同时启用，则BGSAVE和BGREWRITEAOF不会同时执行，且在redis服务器启动用于恢复数据时，优先使用AOF。</p>
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Redis</category>
       </categories>
       <tags>
         <tag>redis</tag>
@@ -256,7 +446,7 @@
 <p>在经过上述处理后，假设现在有一个请求到达，这个请求如果没有被redis名字，那么进行hash计算，看看计算的结果有没有与bitmap匹配的结果，如果有说明关系型数据库中有该值，如果没有则说明不匹配，则不查询后端数据库。但这里要考虑一种特殊情况，即假设请求的是关系型数据库不存在的键，但是hash的值却与现存的bitmap重复了(可能一部分是一个键，一部分是另一个键)，那么这种情况也会查询关系型数据库，会造成一定的损耗(出现该情况可以将该key加入到redis中，值设置为空，以防下次穿透)。因此，bloom过滤器是概率性解决问题，但是概率很大且维护bitmap的开销很小，因此性能较好。</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#安装</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/RedisBloom/RedisBloom.git</span><br><span class="line"><span class="comment">#编译，编译后出现.so文件，即为redis模块</span></span><br><span class="line">make</span><br><span class="line"><span class="comment">#启动时加载，或者在配置文件中loadmodule均可，路径必须是绝对路径</span></span><br><span class="line">redis-server --loadmodule /path/to/redisbloom.so</span><br><span class="line"></span><br><span class="line"><span class="comment">#命令</span></span><br><span class="line"><span class="comment">#将键foo添加到过滤器newfilter</span></span><br><span class="line">BF.ADD newFilter foo</span><br><span class="line"><span class="comment">#判断键是否存在</span></span><br><span class="line">BF.EXISTS newFilter foo</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Redis</category>
       </categories>
       <tags>
         <tag>redis</tag>
@@ -482,7 +672,7 @@
 <h4 id="zremrangebyscore"><a href="#zremrangebyscore" class="headerlink" title="zremrangebyscore"></a>zremrangebyscore</h4><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#移除有序集合中score值在指定范围的member</span></span><br><span class="line"><span class="built_in">help</span> zremrangebyscore</span><br><span class="line">ZREMRANGEBYSCORE key min max</span><br></pre></td></tr></table></figure>
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Redis</category>
       </categories>
       <tags>
         <tag>redis</tag>
@@ -525,7 +715,7 @@
 
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Redis</category>
       </categories>
       <tags>
         <tag>redis</tag>
@@ -577,7 +767,7 @@
 
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Kubernetes</category>
       </categories>
       <tags>
         <tag>kubernetes</tag>
@@ -640,7 +830,7 @@
 
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Kubernetes</category>
       </categories>
       <tags>
         <tag>kubernetes</tag>
@@ -730,7 +920,7 @@
 
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Kubernetes</category>
       </categories>
       <tags>
         <tag>kubernetes</tag>
@@ -802,7 +992,7 @@
 
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Kubernetes</category>
       </categories>
       <tags>
         <tag>kubernetes</tag>
@@ -894,7 +1084,7 @@
 
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Kubernetes</category>
       </categories>
       <tags>
         <tag>kubernetes</tag>
@@ -969,7 +1159,7 @@
 <p>创建pvc</p>
 <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">kind:</span> <span class="string">PersistentVolumeClaim</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">test-claim</span></span><br><span class="line">  <span class="attr">annotations:</span></span><br><span class="line">    <span class="attr">volume.beta.kubernetes.io/storage-class:</span> <span class="string">"managed-nfs-storage"</span>    <span class="comment">#storageclass 名称</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">accessModes:</span>              <span class="comment">#访问模式</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">ReadWriteMany</span></span><br><span class="line">  <span class="attr">resources:</span></span><br><span class="line">    <span class="attr">requests:</span></span><br><span class="line">      <span class="attr">storage:</span> <span class="string">1024Mi</span>        <span class="comment">#请求数据大小</span></span><br><span class="line">      </span><br><span class="line"><span class="comment">#成功后可以看到自动创建了一个pv给pvc</span></span><br></pre></td></tr></table></figure>]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Kubernetes</category>
       </categories>
       <tags>
         <tag>kubernetes</tag>
@@ -1064,7 +1254,7 @@
 <p>至此就可以使用https端口访问了，注意要在地址前手动添加https协议。</p>
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Kubernetes</category>
       </categories>
       <tags>
         <tag>kubernetes</tag>
@@ -1165,7 +1355,7 @@
 
 ]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Kubernetes</category>
       </categories>
       <tags>
         <tag>kubernetes</tag>
@@ -1259,7 +1449,7 @@
 <p>删除nginx的pod后，会自动创建新的pod，自此简单的k8s已搭好。</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubectl delete nginx-xxx</span><br><span class="line"><span class="comment">#删除后查看发现已经重新创建pod，且名称后缀已经改变</span></span><br><span class="line">kubectl get pods</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
-        <category>Linux</category>
+        <category>Kubernetes</category>
       </categories>
       <tags>
         <tag>kubernetes</tag>
@@ -2007,8 +2197,8 @@
         <category>Linux</category>
       </categories>
       <tags>
-        <tag>anxible</tag>
         <tag>自动化</tag>
+        <tag>anxible</tag>
         <tag>ssh</tag>
       </tags>
   </entry>
@@ -2096,10 +2286,10 @@
         <category>Linux</category>
       </categories>
       <tags>
-        <tag>自动化</tag>
         <tag>dhcp</tag>
         <tag>pxe</tag>
         <tag>cobbler</tag>
+        <tag>自动化</tag>
       </tags>
   </entry>
   <entry>
