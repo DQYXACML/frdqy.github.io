@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="权限类别mysql数据库的权限主要分为库、表、字段、管理、程序等类别。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mariadb-用户权限、缓存">
+<meta property="og:url" content="http://yoursite.com/2020/02/22/mariadb-%E7%94%A8%E6%88%B7%E6%9D%83%E9%99%90%E3%80%81%E7%BC%93%E5%AD%98/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="权限类别mysql数据库的权限主要分为库、表、字段、管理、程序等类别。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-02-22T06:12:02.000Z">
+<meta property="article:modified_time" content="2020-02-22T11:21:59.060Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="mysql">
+<meta property="article:tag" content="mariadb">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/02/22/mariadb-%E7%94%A8%E6%88%B7%E6%9D%83%E9%99%90%E3%80%81%E7%BC%93%E5%AD%98/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>mariadb-用户权限、缓存 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">86</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">8</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">68</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/22/mariadb-%E7%94%A8%E6%88%B7%E6%9D%83%E9%99%90%E3%80%81%E7%BC%93%E5%AD%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          mariadb-用户权限、缓存
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-02-22 14:12:02 / 修改时间：19:21:59" itemprop="dateCreated datePublished" datetime="2020-02-22T14:12:02+08:00">2020-02-22</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/mariadb/" itemprop="url" rel="index">
+                    <span itemprop="name">mariadb</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="权限类别"><a href="#权限类别" class="headerlink" title="权限类别"></a>权限类别</h3><p>mysql数据库的权限主要分为库、表、字段、管理、程序等类别。</p>
+<a id="more"></a>
+<h4 id="管理类"><a href="#管理类" class="headerlink" title="管理类"></a>管理类</h4><ul>
+<li>create temporary tables：创建临时表，一般为16mb，存储在内存中</li>
+<li>create user：创建用户</li>
+<li>file：将当前数据库保存到文件中，或者从文件中导入数据库</li>
+<li>super：高级管理类权限，如授权等</li>
+<li>show databases：查看数据库，一般所有用户都有</li>
+<li>reload：重新装载授权表</li>
+<li>shutdown：进程级别关闭数据库</li>
+<li>replication slave：是否能够实现复制功能</li>
+<li>replication client：是否能向主服务器请求复制</li>
+<li>lock tables：锁表</li>
+<li>process：与mysql进程相关</li>
+</ul>
+<h4 id="程序类"><a href="#程序类" class="headerlink" title="程序类"></a>程序类</h4><ul>
+<li>function：创建、修改、删除、执行函数</li>
+<li>procedure：创建、修改、删除、执行函数</li>
+<li>trigger：创建、修改、删除、执行触发器</li>
+</ul>
+<h4 id="库和表类"><a href="#库和表类" class="headerlink" title="库和表类"></a>库和表类</h4><ul>
+<li>alter：修改</li>
+<li>create：创建</li>
+<li>create view：创建视图</li>
+<li>drop：删除</li>
+<li>index：创建或删除索引</li>
+<li>show view：查看视图</li>
+<li>grant option：能把自己获得权限赠给其他用户一个副本</li>
+</ul>
+<h4 id="数据字段类"><a href="#数据字段类" class="headerlink" title="数据字段类"></a>数据字段类</h4><ul>
+<li>select：查询字段</li>
+<li>insert：修改字段</li>
+<li>delete：删除字段</li>
+<li>update：更新字段</li>
+</ul>
+<h4 id="所有权限类"><a href="#所有权限类" class="headerlink" title="所有权限类"></a>所有权限类</h4><ul>
+<li>all privileges：表示所有有限权限</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#以上信息都存放在mysql元数据表中</span><br><span class="line">use mysql;</span><br><span class="line">show tabels;</span><br><span class="line"></span><br><span class="line">db、host、user：用于实现用户授权，即用户登录等限制信息</span><br><span class="line">columns_priv, tables_priv, procs_priv, proxies_priv：表、程序、代理级别的权限</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="用户"><a href="#用户" class="headerlink" title="用户"></a>用户</h3><h4 id="创建用户"><a href="#创建用户" class="headerlink" title="创建用户"></a>创建用户</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">create user &#39;username&#39;@&#39;host&#39; [identified by &#39;password&#39;];</span><br><span class="line">	username：用户名</span><br><span class="line">	host：允许用户登录的网段，可使用%通配</span><br><span class="line">	password：用户密码</span><br></pre></td></tr></table></figure>
+
+<h4 id="查看用户授权"><a href="#查看用户授权" class="headerlink" title="查看用户授权"></a>查看用户授权</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">show grants for &#39;username&#39;@&#39;host&#39;;</span><br></pre></td></tr></table></figure>
+
+<h4 id="重命名用户"><a href="#重命名用户" class="headerlink" title="重命名用户"></a>重命名用户</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">rename user old_user_name to new_user_name;</span><br></pre></td></tr></table></figure>
+
+<h4 id="删除用户"><a href="#删除用户" class="headerlink" title="删除用户"></a>删除用户</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">drop user &#39;username&#39;@&#39;host&#39;;</span><br></pre></td></tr></table></figure>
+
+<h4 id="修改密码"><a href="#修改密码" class="headerlink" title="修改密码"></a>修改密码</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#第一种</span><br><span class="line">set password for</span><br><span class="line">#第二种，不自动更新授权表，需要执行flush privileges</span><br><span class="line">update mysql.user set password&#x3D;PASSWORD(&#39;your_password&#39;) where clause;</span><br><span class="line">#第三种</span><br><span class="line">mysqladm password</span><br></pre></td></tr></table></figure>
+
+<h4 id="忘记管理员密码"><a href="#忘记管理员密码" class="headerlink" title="忘记管理员密码"></a>忘记管理员密码</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">1、启动mysqld进程时，使用--skip-grant-tables --skip-networking来跳过授权以及网络连接，centos7需要修改对应service文件</span><br><span class="line">2、使用update命令修改管理员密码</span><br><span class="line">3、重启mysqld进程</span><br></pre></td></tr></table></figure>
+
+<h4 id="授权"><a href="#授权" class="headerlink" title="授权"></a>授权</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GRANT priv_type[,...] ON [&#123;table|function|procedure&#125;] db.&#123;table|routine&#125; TO &#39;USERNAME&#39;@&#39;HOST&#39; [IDENTIFIED BY &#39;password&#39;] [REQUIRE SSL] [WITH with_option]</span><br><span class="line">with_option：</span><br><span class="line">	MAX_QUERIES_PER_HOUR count：每小时最多查询数</span><br><span class="line">	MAX_UPDATES_PER_HOUR count：每小时最多更新数</span><br><span class="line">	MAX_CONNECTIONS_PER_HOUR count：每小时最大连接数</span><br><span class="line">	MAX_USER_CONNECTIONS count：每个用户最大连接数</span><br></pre></td></tr></table></figure>
+
+<h4 id="取消授权"><a href="#取消授权" class="headerlink" title="取消授权"></a>取消授权</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">REVOKE priv_type [(column_list)] [,priv_type [(column_list)]] ... ON [object_type] priv_level FROM user [,user]...</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="查询缓存"><a href="#查询缓存" class="headerlink" title="查询缓存"></a>查询缓存</h3><h4 id="判断是否命中"><a href="#判断是否命中" class="headerlink" title="判断是否命中"></a>判断是否命中</h4><p>通过查询语句的hash值判断，需要考虑几个因素：</p>
+<ul>
+<li>查询语句本身，查询语句任何字符上的不同都会导致缓存不能命中；若查询语句中包含用户自定义函数、存储函数、用户自定义变量、临时表、mysql系统表、列级权限表、不确定值的函数等都不会被缓存</li>
+<li>要查询的数据库</li>
+<li>客户端使用的协议版本</li>
+</ul>
+<h4 id="缓存效率"><a href="#缓存效率" class="headerlink" title="缓存效率"></a>缓存效率</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">#查看mysql查询缓存相关变量</span><br><span class="line">show global variables like &#39;%query%&#39;</span><br><span class="line">#查询相关缓存状态变量</span><br><span class="line">show global status like &#39;Qcache%&#39;</span><br><span class="line"></span><br><span class="line">#命中率</span><br><span class="line">Qcache_hits&#x2F;(Qcache_hits+Com_select)</span><br><span class="line"></span><br><span class="line">#有关变量</span><br><span class="line">query_cache_min_res_unit：查询缓存的内存分配最小单位；值减少会减少浪费，但会导致更频繁的内存分配；值较大时会导致碎片过多，可以使用FLUSH QUERY CACHE来减少碎片</span><br><span class="line">query_cache_limit：mysql能够缓存的最大查询结果；对于有着较大结果的查询语句，建议在select中使用SQL_NO_CACHE来显示指定不缓存</span><br><span class="line">query_cache_size：查询缓存可用的内存空间，必须是1024整数倍，单位为字节</span><br><span class="line">query_cache_type：缓存类型，ON、OFF、DEMAND，DEMAND表示只有查询语句显示指定SQL_CACHE时才缓存</span><br><span class="line">query_cache_wlock_invalidate：如果某表被其他连接锁定，是否仍从查询返回结果，默认为OFF</span><br><span class="line"></span><br><span class="line">#常见问题及修改</span><br><span class="line">查询结果过大导致不能缓存，需要提高query_cache_limit值</span><br><span class="line">内存碎片化，需要减少query_cache_min_res_unit值</span><br><span class="line">如果缓存空间太小，导致缓存不断换入换出，需要提高query_cache_size值</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/mysql/" rel="tag"># mysql</a>
+              <a href="/tags/mariadb/" rel="tag"># mariadb</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/19/10%E7%9F%A9%E9%98%B5%E4%B8%AD%E7%9A%84%E8%B7%AF%E5%BE%84/" rel="prev" title="10矩阵中的路径">
+      <i class="fa fa-chevron-left"></i> 10矩阵中的路径
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/02/22/mariadb-%E7%B4%A2%E5%BC%95/" rel="next" title="mariadb-索引">
+      mariadb-索引 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#权限类别"><span class="nav-number">1.</span> <span class="nav-text">权限类别</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#管理类"><span class="nav-number">1.1.</span> <span class="nav-text">管理类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#程序类"><span class="nav-number">1.2.</span> <span class="nav-text">程序类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#库和表类"><span class="nav-number">1.3.</span> <span class="nav-text">库和表类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#数据字段类"><span class="nav-number">1.4.</span> <span class="nav-text">数据字段类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#所有权限类"><span class="nav-number">1.5.</span> <span class="nav-text">所有权限类</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#用户"><span class="nav-number">2.</span> <span class="nav-text">用户</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建用户"><span class="nav-number">2.1.</span> <span class="nav-text">创建用户</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#查看用户授权"><span class="nav-number">2.2.</span> <span class="nav-text">查看用户授权</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#重命名用户"><span class="nav-number">2.3.</span> <span class="nav-text">重命名用户</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#删除用户"><span class="nav-number">2.4.</span> <span class="nav-text">删除用户</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#修改密码"><span class="nav-number">2.5.</span> <span class="nav-text">修改密码</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#忘记管理员密码"><span class="nav-number">2.6.</span> <span class="nav-text">忘记管理员密码</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#授权"><span class="nav-number">2.7.</span> <span class="nav-text">授权</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#取消授权"><span class="nav-number">2.8.</span> <span class="nav-text">取消授权</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查询缓存"><span class="nav-number">3.</span> <span class="nav-text">查询缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#判断是否命中"><span class="nav-number">3.1.</span> <span class="nav-text">判断是否命中</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#缓存效率"><span class="nav-number">3.2.</span> <span class="nav-text">缓存效率</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">68</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">86</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
