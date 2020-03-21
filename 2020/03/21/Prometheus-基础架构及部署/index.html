@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="前言这个系列文章将Prometheus部署在k8s集群中进行实验。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Prometheus-基础架构及部署">
+<meta property="og:url" content="http://yoursite.com/2020/03/21/Prometheus-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="前言这个系列文章将Prometheus部署在k8s集群中进行实验。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2020/03/21/Prometheus-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/Prom%E6%9E%B6%E6%9E%84.png">
+<meta property="article:published_time" content="2020-03-21T10:00:09.000Z">
+<meta property="article:modified_time" content="2020-03-21T10:05:27.988Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="Prometheus">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/03/21/Prometheus-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/Prom%E6%9E%B6%E6%9E%84.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/03/21/Prometheus-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Prometheus-基础架构及部署 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">90</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">10</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">77</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/21/Prometheus-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Prometheus-基础架构及部署
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-03-21 18:00:09 / 修改时间：18:05:27" itemprop="dateCreated datePublished" datetime="2020-03-21T18:00:09+08:00">2020-03-21</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Prometheus/" itemprop="url" rel="index">
+                    <span itemprop="name">Prometheus</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>这个系列文章将Prometheus部署在k8s集群中进行实验。</p>
+<a id="more"></a>
+
+
+<h3 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h3><ul>
+<li><p>多维度数据模型；</p>
+<p>时间序列数据由metrics名称和键值对来组成</p>
+<p>可以对数据进行聚合，切割等操作</p>
+<p>所有的metrics都可以设置任意的多维标签。</p>
+</li>
+<li><p>灵活的查询语言（PromQL）：可以对采集的metrics指标进行加法，乘法，连接等操作；</p>
+</li>
+<li><p>可以直接在本地部署，不依赖其他分布式存储；</p>
+</li>
+<li><p>通过基于HTTP的pull方式采集时序数据；</p>
+</li>
+<li><p>可以通过中间网关push gateway的方式把时间序列数据推送到Prometheus server端；</p>
+</li>
+<li><p>可通过服务发现或者静态配置来发现目标服务对象（targets）。</p>
+</li>
+<li><p>有多种可视化图像界面，如Grafana等。</p>
+</li>
+<li><p>高效的存储，每个采样数据占3.5 bytes左右，300万的时间序列，30s间隔，保留60天，消耗磁盘大概200G。</p>
+</li>
+</ul>
+<h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p><img src="/2020/03/21/Prometheus-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84%E5%8F%8A%E9%83%A8%E7%BD%B2/Prom%E6%9E%B6%E6%9E%84.png" alt="image-20200321160129232"></p>
+<p><strong>Prometheus Server</strong>: 用于收集和存储时间序列数据。</p>
+<p><strong>Retrieval</strong>:负责在活跃的target主机上抓取监控指标数据。</p>
+<p><strong>Storage</strong>:存储主要是把采集到的数据存储到磁盘中。</p>
+<p><strong>PromQL</strong>:是Prometheus提供的查询语言模块。</p>
+<p><strong>Client Library</strong>: 客户端库，检测应用程序代码，当Prometheus抓取实例的HTTP端点时，客户端库会将所有跟踪的metrics指标的当前状态发送到prometheus server端。</p>
+<p><strong>Exporters</strong>: prometheus支持多种exporter，通过exporter可以采集metrics数据，然后发送到prometheus server端</p>
+<p><strong>Alertmanager</strong>: 从 Prometheus server 端接收到 alerts 后，会进行去重、分组并路由到相应的接收方，最后发出报警。常见的接收方式有：电子邮件，微信，钉钉，slack等。</p>
+<p><strong>Grafana：</strong>监控仪表盘</p>
+<p><strong>pushgateway</strong>: 各个目标主机可上报数据到pushgateway，然后prometheus server统一从pushgateway拉取数据。</p>
+<h3 id="工作流程"><a href="#工作流程" class="headerlink" title="工作流程"></a>工作流程</h3><ol>
+<li><p>Prometheus server可定期从活跃的（up）目标主机上（target）拉取监控指标数据，目标主机的监控数据可通过配置静态job或者服务发现的方式被prometheus server采集到，这种方式默认采用pull方式拉取指标；也可通过pushgateway把采集的数据上报到prometheus server中；还可通过一些组件自带的exporter采集相应组件的数据；</p>
+</li>
+<li><p>Prometheus server把采集到的监控指标数据保存到本地磁盘或者数据库；</p>
+</li>
+<li><p>Prometheus采集的监控指标数据按时间序列存储，通过配置报警规则，把触发的报警发送到alertmanager;</p>
+</li>
+<li><p>Alertmanager通过配置报警接收方，发送报警到邮件，微信或者钉钉等;</p>
+</li>
+<li><p>Prometheus 自带的web ui界面提供PromQL查询语言，可查询监控数据;</p>
+</li>
+<li><p>Grafana可接入prometheus数据源，把监控数据以图形化形式展示出.</p>
+</li>
+</ol>
+<h3 id="cAdvisor"><a href="#cAdvisor" class="headerlink" title="cAdvisor"></a>cAdvisor</h3><p>用于收集容器的数据，k8s中一般集成在kubelet组件中。</p>
+<h4 id="常见指标"><a href="#常见指标" class="headerlink" title="常见指标"></a>常见指标</h4><p>counter计数器：只是采集递增的指标<br>gauge标准尺寸：统计的指标可增加可减少</p>
+<table>
+<thead>
+<tr>
+<th>指标名称</th>
+<th>类型</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>container_cpu_load_average_10s</td>
+<td>gauge</td>
+<td>过去10秒容器CPU的平均负载</td>
+</tr>
+<tr>
+<td>container_cpu_usage_seconds_total</td>
+<td>counter</td>
+<td>容器在每个CPU内核上的累积占用时间 (单位：秒)</td>
+</tr>
+<tr>
+<td>container_cpu_system_seconds_total</td>
+<td>counter</td>
+<td>System CPU累积占用时间(单位：秒)</td>
+</tr>
+<tr>
+<td>container_cpu_user_seconds_total</td>
+<td>counter</td>
+<td>User CPU累积占用时间(单位：秒)</td>
+</tr>
+<tr>
+<td>container_fs_usage_bytes</td>
+<td>gauge</td>
+<td>容器中文件系统的使用量(单位：字节)</td>
+</tr>
+<tr>
+<td>container_fs_limit_bytes</td>
+<td>gauge</td>
+<td>容器可以使用的文件系统总量(单位：字节)</td>
+</tr>
+<tr>
+<td>container_fs_reads_bytes_total</td>
+<td>counter</td>
+<td>容器累积读取数据的总量(单位：字节)</td>
+</tr>
+<tr>
+<td>container_fs_writes_bytes_total</td>
+<td>counter</td>
+<td>容器累积写入数据的总量(单位：字节)</td>
+</tr>
+<tr>
+<td>container_memory_max_usage_bytes</td>
+<td>gauge</td>
+<td>容器的最大内存使用量(单位：字节)</td>
+</tr>
+<tr>
+<td>container_memory_usage_bytes</td>
+<td>gauge</td>
+<td>容器当前的内存使用量(单位：字节)</td>
+</tr>
+<tr>
+<td>container_spec_memory_limit_bytes</td>
+<td>gauge</td>
+<td>容器的内存使用量限制</td>
+</tr>
+<tr>
+<td>machine_memory_bytes</td>
+<td>gauge</td>
+<td>当前主机的内存总量</td>
+</tr>
+<tr>
+<td>container_network_receive_bytes_total</td>
+<td>counter</td>
+<td>容器网络累积接收数据总量(单位：字节)</td>
+</tr>
+<tr>
+<td>container_network_transmit_bytes_total</td>
+<td>counter</td>
+<td>容器网络累积传输数据总量(单位：字节)</td>
+</tr>
+</tbody></table>
+<h4 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#创建名称空间monitor-sa</span></span><br><span class="line">kubectl create ns monitor-sa</span><br><span class="line"></span><br><span class="line"><span class="comment">#创建sa</span></span><br><span class="line">kubectl create serviceaccount monitor -n monitor-sa</span><br><span class="line"></span><br><span class="line"><span class="comment">#绑定clusterrolebinding</span></span><br><span class="line">kubectl create clusterrolebinding monitor-clusterrolebinding -n monitor-sa --clusterrole=cluster-admin  --serviceaccount=monitor-sa:monitor</span><br><span class="line"></span><br><span class="line"><span class="comment">#获取cAdvisor指标，token就是sa的secret中的token</span></span><br><span class="line">curl https://127.0.0.1:10250/metrics/cadvisor -k -H <span class="string">"Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6Ik9FeEZPa0pTcnF6Yl9tMzVkQUZRS3lISTdVZjhvTGNGZ0lDdjJtQjRSQzAifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJtb25pdG9yLXNhIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6Im1vbml0b3ItdG9rZW4tdjVuNGciLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoibW9uaXRvciIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6Ijk5ZmM1Y2I5LTcxYjMtNGEwMS1hOWJmLWM2OWRhNzEzODU4YyIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDptb25pdG9yLXNhOm1vbml0b3IifQ.y8g-OFCoxbHUEsCRb3FHokaP24Dt6fWLl2a6Q-9R3R_Y38XkrOMiQZF64R8Xcc0mpMqd62HjhLEAxVE-9g4sINquQ41aDDBIFGuGPXsWVQBe5ZU2ktXh4y8W5YzxuxEzn8sA5--RgrOPJrd8aHh5w3QVECuCl9zL1cFUno8g904nXvEgZqU8VM6sj3CMwy3ovbHFU7OabREjJ3WiG1S--8G1VqD18qXbxCPmPt9nGaES2C_z_41Ujqk-O6iv6ASlBSTJqWpYTb7_YeSNp5Relyr-f-lhdTQC_XrNArtO_P2wZ2lgSP3qWtIrmsjqkCEYZNYOzs5xI5nJiomSjnhOPw"</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="node-exporter"><a href="#node-exporter" class="headerlink" title="node-exporter"></a>node-exporter</h3><p>主要用于采集node节点监控指标数据，能够采集到主机的运行指标如CPU,、内存、磁盘、网络、文件数等信息。</p>
+<h4 id="常见指标-1"><a href="#常见指标-1" class="headerlink" title="常见指标"></a>常见指标</h4><table>
+<thead>
+<tr>
+<th>指标名称</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>node_boot_time</td>
+<td>系统启动时间</td>
+</tr>
+<tr>
+<td>node_cpu</td>
+<td>系统CPU使用量</td>
+</tr>
+<tr>
+<td>nodedisk*</td>
+<td>磁盘IO</td>
+</tr>
+<tr>
+<td>nodefilesystem*</td>
+<td>文件系统用量</td>
+</tr>
+<tr>
+<td>node_load1</td>
+<td>系统负载</td>
+</tr>
+<tr>
+<td>nodememeory*</td>
+<td>内存使用量</td>
+</tr>
+<tr>
+<td>nodenetwork*</td>
+<td>网络带宽</td>
+</tr>
+<tr>
+<td>node_time</td>
+<td>当前系统时间</td>
+</tr>
+<tr>
+<td>go_*</td>
+<td>node exporter中go相关指标</td>
+</tr>
+<tr>
+<td>process_*</td>
+<td>node exporter自身进程相关运行指标</td>
+</tr>
+</tbody></table>
+<h4 id="部署-1"><a href="#部署-1" class="headerlink" title="部署"></a>部署</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#解压镜像，放到master和node节点给上执行</span></span><br><span class="line">docker load -i node-exporter_v0_16.tar.gz</span><br><span class="line">ansible all -m shell -a <span class="string">'docker load -i node-exporter_v0_16.tar.gz'</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#创建yaml文件</span></span><br><span class="line">apiVersion: apps/v1</span><br><span class="line">kind: DaemonSet</span><br><span class="line">metadata:</span><br><span class="line">  name: node-exporter</span><br><span class="line">  namespace: monitor-sa</span><br><span class="line">  labels:</span><br><span class="line">    name: node-exporter</span><br><span class="line">spec:</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">     name: node-exporter</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        name: node-exporter</span><br><span class="line">    spec:</span><br><span class="line">      hostPID: <span class="literal">true</span></span><br><span class="line">      hostIPC: <span class="literal">true</span></span><br><span class="line">      hostNetwork: <span class="literal">true</span></span><br><span class="line">      containers:</span><br><span class="line">      - name: node-exporter</span><br><span class="line">        image: prom/node-exporter:v0.16.0</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 9100</span><br><span class="line">        resources:</span><br><span class="line">          requests:</span><br><span class="line">            cpu: 0.15</span><br><span class="line">        securityContext:</span><br><span class="line">          privileged: <span class="literal">true</span></span><br><span class="line">        args:</span><br><span class="line">        - --path.procfs</span><br><span class="line">        - /host/proc</span><br><span class="line">        - --path.sysfs</span><br><span class="line">        - /host/sys</span><br><span class="line">        - --collector.filesystem.ignored-mount-points</span><br><span class="line">        - <span class="string">'"^/(sys|proc|dev|host|etc)($|/)"'</span></span><br><span class="line">        volumeMounts:</span><br><span class="line">        - name: dev</span><br><span class="line">          mountPath: /host/dev</span><br><span class="line">        - name: proc</span><br><span class="line">          mountPath: /host/proc</span><br><span class="line">        - name: sys</span><br><span class="line">          mountPath: /host/sys</span><br><span class="line">        - name: rootfs</span><br><span class="line">          mountPath: /rootfs</span><br><span class="line">      tolerations:</span><br><span class="line">      - key: <span class="string">"node-role.kubernetes.io/master"</span></span><br><span class="line">        operator: <span class="string">"Exists"</span></span><br><span class="line">        effect: <span class="string">"NoSchedule"</span></span><br><span class="line">      volumes:</span><br><span class="line">        - name: proc</span><br><span class="line">          hostPath:</span><br><span class="line">            path: /proc</span><br><span class="line">        - name: dev</span><br><span class="line">          hostPath:</span><br><span class="line">            path: /dev</span><br><span class="line">        - name: sys</span><br><span class="line">          hostPath:</span><br><span class="line">            path: /sys</span><br><span class="line">        - name: rootfs</span><br><span class="line">          hostPath:</span><br><span class="line">            path: /</span><br><span class="line"><span class="comment">#部署</span></span><br><span class="line">kubectl apply -f node-exporter.yaml</span><br><span class="line"><span class="comment">#查看获取的数据</span></span><br><span class="line">curl http://192.168.163.132:9100/metrics</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="部署Prometheus"><a href="#部署Prometheus" class="headerlink" title="部署Prometheus"></a>部署Prometheus</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#装载镜像</span></span><br><span class="line">docker load -i prometheus_v2_2_1.tar.gz</span><br><span class="line"></span><br><span class="line"><span class="comment">#在k8s-node节点创建一个存储prometheus数据的目录</span></span><br><span class="line">mkdir /data</span><br><span class="line">chmod 777 /data/</span><br><span class="line"><span class="comment">#在k8s-master节点执行如下</span></span><br><span class="line">kubectl apply -f prometheus-cfg.yaml</span><br><span class="line">kubectl apply -f prometheus-deploy.yaml</span><br><span class="line">kubectl apply -f prometheus-svc.yaml</span><br><span class="line"></span><br><span class="line"><span class="comment">#prometheus-cfg.yaml</span></span><br><span class="line">kind: ConfigMap</span><br><span class="line">apiVersion: v1</span><br><span class="line">metadata:</span><br><span class="line">  labels:</span><br><span class="line">    app: prometheus</span><br><span class="line">  name: prometheus-config</span><br><span class="line">  namespace: monitor-sa</span><br><span class="line">data:</span><br><span class="line">  prometheus.yml: |</span><br><span class="line">    global:</span><br><span class="line">      scrape_interval: 15s			<span class="comment">#收集数据间隔</span></span><br><span class="line">      scrape_timeout: 10s			<span class="comment">#收集书超时时间</span></span><br><span class="line">      evaluation_interval: 1m		<span class="comment">#警报规则计算周期，计算后更新警报状态</span></span><br><span class="line">    scrape_configs:</span><br><span class="line">    - job_name: <span class="string">'kubernetes-node'</span></span><br><span class="line">      kubernetes_sd_configs:</span><br><span class="line">      - role: node</span><br><span class="line">      relabel_configs:</span><br><span class="line">      - source_labels: [__address__]</span><br><span class="line">        regex: <span class="string">'(.*):10250'</span></span><br><span class="line">        replacement: <span class="string">'$&#123;1&#125;:9100'</span></span><br><span class="line">        target_label: __address__</span><br><span class="line">        action: replace</span><br><span class="line">      - action: labelmap</span><br><span class="line">        regex: __meta_kubernetes_node_label_(.+)</span><br><span class="line">    - job_name: <span class="string">'kubernetes-node-cadvisor'</span></span><br><span class="line">      kubernetes_sd_configs:</span><br><span class="line">      - role:  node</span><br><span class="line">      scheme: https</span><br><span class="line">      tls_config:</span><br><span class="line">        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt</span><br><span class="line">      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token</span><br><span class="line">      relabel_configs:</span><br><span class="line">      - action: labelmap</span><br><span class="line">        regex: __meta_kubernetes_node_label_(.+)</span><br><span class="line">      - target_label: __address__</span><br><span class="line">        replacement: kubernetes.default.svc:443</span><br><span class="line">      - source_labels: [__meta_kubernetes_node_name]</span><br><span class="line">        regex: (.+)</span><br><span class="line">        target_label: __metrics_path__</span><br><span class="line">        replacement: /api/v1/nodes/<span class="variable">$&#123;1&#125;</span>/proxy/metrics/cadvisor</span><br><span class="line">    - job_name: <span class="string">'kubernetes-apiserver'</span></span><br><span class="line">      kubernetes_sd_configs:</span><br><span class="line">      - role: endpoints</span><br><span class="line">      scheme: https</span><br><span class="line">      tls_config:</span><br><span class="line">        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt</span><br><span class="line">      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token</span><br><span class="line">      relabel_configs:</span><br><span class="line">      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]</span><br><span class="line">        action: keep</span><br><span class="line">        regex: default;kubernetes;https</span><br><span class="line">    - job_name: <span class="string">'kubernetes-service-endpoints'</span></span><br><span class="line">      kubernetes_sd_configs:</span><br><span class="line">      - role: endpoints</span><br><span class="line">      relabel_configs:</span><br><span class="line">      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]</span><br><span class="line">        action: keep</span><br><span class="line">        regex: <span class="literal">true</span></span><br><span class="line">      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]</span><br><span class="line">        action: replace</span><br><span class="line">        target_label: __scheme__</span><br><span class="line">        regex: (https?)</span><br><span class="line">      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]</span><br><span class="line">        action: replace</span><br><span class="line">        target_label: __metrics_path__</span><br><span class="line">        regex: (.+)</span><br><span class="line">      - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]</span><br><span class="line">        action: replace</span><br><span class="line">        target_label: __address__</span><br><span class="line">        regex: ([^:]+)(?::\d+)?;(\d+)</span><br><span class="line">        replacement: <span class="variable">$1</span>:<span class="variable">$2</span></span><br><span class="line">      - action: labelmap</span><br><span class="line">        regex: __meta_kubernetes_service_label_(.+)</span><br><span class="line">      - source_labels: [__meta_kubernetes_namespace]</span><br><span class="line">        action: replace</span><br><span class="line">        target_label: kubernetes_namespace</span><br><span class="line">      - source_labels: [__meta_kubernetes_service_name]</span><br><span class="line">        action: replace</span><br><span class="line">        target_label: kubernetes_name</span><br><span class="line">        </span><br><span class="line"><span class="comment">#prometheus-deploy.yaml，设置nodeName部署在master上</span></span><br><span class="line">apiVersion: apps/v1</span><br><span class="line">kind: Deployment</span><br><span class="line">metadata:</span><br><span class="line">  name: prometheus-server</span><br><span class="line">  namespace: monitor-sa</span><br><span class="line">  labels:</span><br><span class="line">    app: prometheus</span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      app: prometheus</span><br><span class="line">      component: server</span><br><span class="line">    <span class="comment">#matchExpressions:</span></span><br><span class="line">    <span class="comment">#- &#123;key: app, operator: In, values: [prometheus]&#125;</span></span><br><span class="line">    <span class="comment">#- &#123;key: component, operator: In, values: [server]&#125;</span></span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        app: prometheus</span><br><span class="line">        component: server</span><br><span class="line">      annotations:</span><br><span class="line">        prometheus.io/scrape: <span class="string">'false'</span></span><br><span class="line">    spec:</span><br><span class="line">      nodeName: localhost.localdomain</span><br><span class="line">      serviceAccountName: monitor</span><br><span class="line">      containers:</span><br><span class="line">      - name: prometheus</span><br><span class="line">        image: prom/prometheus:v2.2.1</span><br><span class="line">        imagePullPolicy: IfNotPresent</span><br><span class="line">        <span class="built_in">command</span>:</span><br><span class="line">          - prometheus</span><br><span class="line">          - --config.file=/etc/prometheus/prometheus.yml</span><br><span class="line">          - --storage.tsdb.path=/prometheus</span><br><span class="line">          - --storage.tsdb.retention=720h</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 9090</span><br><span class="line">          protocol: TCP</span><br><span class="line">        volumeMounts:</span><br><span class="line">        - mountPath: /etc/prometheus/prometheus.yml</span><br><span class="line">          name: prometheus-config</span><br><span class="line">          subPath: prometheus.yml</span><br><span class="line">        - mountPath: /prometheus/</span><br><span class="line">          name: prometheus-storage-volume</span><br><span class="line">      volumes:</span><br><span class="line">        - name: prometheus-config</span><br><span class="line">          configMap:</span><br><span class="line">            name: prometheus-config</span><br><span class="line">            items:</span><br><span class="line">              - key: prometheus.yml</span><br><span class="line">                path: prometheus.yml</span><br><span class="line">                mode: 0644</span><br><span class="line">        - name: prometheus-storage-volume</span><br><span class="line">          hostPath:</span><br><span class="line">           path: /data</span><br><span class="line">           <span class="built_in">type</span>: Directory</span><br><span class="line"></span><br><span class="line"><span class="comment">#prometheus-svc.yaml</span></span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Service</span><br><span class="line">metadata:</span><br><span class="line">  name: prometheus</span><br><span class="line">  namespace: monitor-sa</span><br><span class="line">  labels:</span><br><span class="line">    app: prometheus</span><br><span class="line">spec:</span><br><span class="line">  <span class="built_in">type</span>: NodePort</span><br><span class="line">  ports:</span><br><span class="line">    - port: 9090</span><br><span class="line">      targetPort: 9090</span><br><span class="line">      nodePort: 30090</span><br><span class="line">      protocol: TCP</span><br><span class="line">  selector:</span><br><span class="line">    app: prometheus</span><br><span class="line">    component: server</span><br><span class="line">    </span><br><span class="line"><span class="comment">#访问Prometheus自带的web界面</span></span><br><span class="line">192.168.163.132:30090</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">#警报状态</span></span><br><span class="line">inactive：没有触发阈值</span><br><span class="line">pending：已触发阈值但未满足告警持续时间</span><br><span class="line">firing：已触发阈值且满足告警持续时间</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Prometheus/" rel="tag"># Prometheus</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/07/ssh%E5%9F%BA%E6%9C%AC%E4%BD%BF%E7%94%A8%E5%8F%8A%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/" rel="prev" title="ssh基本使用及工作原理">
+      <i class="fa fa-chevron-left"></i> ssh基本使用及工作原理
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#特点"><span class="nav-number">2.</span> <span class="nav-text">特点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#架构"><span class="nav-number">3.</span> <span class="nav-text">架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工作流程"><span class="nav-number">4.</span> <span class="nav-text">工作流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cAdvisor"><span class="nav-number">5.</span> <span class="nav-text">cAdvisor</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#常见指标"><span class="nav-number">5.1.</span> <span class="nav-text">常见指标</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#部署"><span class="nav-number">5.2.</span> <span class="nav-text">部署</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#node-exporter"><span class="nav-number">6.</span> <span class="nav-text">node-exporter</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#常见指标-1"><span class="nav-number">6.1.</span> <span class="nav-text">常见指标</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#部署-1"><span class="nav-number">6.2.</span> <span class="nav-text">部署</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#部署Prometheus"><span class="nav-number">7.</span> <span class="nav-text">部署Prometheus</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">77</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">10</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">90</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
