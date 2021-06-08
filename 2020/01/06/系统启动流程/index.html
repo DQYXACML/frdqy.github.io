@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="POST带电自检，存储在ROM中，其中包括BIOS。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="系统启动流程">
+<meta property="og:url" content="http://yoursite.com/2020/01/06/%E7%B3%BB%E7%BB%9F%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="POST带电自检，存储在ROM中，其中包括BIOS。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-06T13:10:42.000Z">
+<meta property="article:modified_time" content="2020-01-06T13:13:04.263Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="启动流程">
+<meta property="article:tag" content="systemd">
+<meta property="article:tag" content="init">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/06/%E7%B3%BB%E7%BB%9F%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>系统启动流程 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/06/%E7%B3%BB%E7%BB%9F%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          系统启动流程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-06 21:10:42 / 修改时间：21:13:04" itemprop="dateCreated datePublished" datetime="2020-01-06T21:10:42+08:00">2020-01-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="POST"><a href="#POST" class="headerlink" title="POST"></a>POST</h3><p>带电自检，存储在ROM中，其中包括BIOS。</p>
+<a id="more"></a>
+<h3 id="BOOT"><a href="#BOOT" class="headerlink" title="BOOT"></a>BOOT</h3><p>按次序查找各引导设备，第一个有引导程序的设备即为本次启动要用到的设备，引导程序叫做bootloader。在linux中叫做grub2。他主要是提供一个菜单，允许用户选择要启动的系统或不同的内核版本，把其装载到RAM中解压并展开，之后把系统执行权限移交给内核。</p>
+<p>由于MBR的bootloader只允许446字节，远不够bootloader的编写。因此grub分成三段，第一段就位于bootloader中；第二段位于mbr之后的扇区中，用于让第一段的程序能够识别grub真正程序所在的文件系统；第三段位于/boot/grub目录下，提供真正能编辑的界面。配置文件在/boot/grub/grub.conf中。</p>
+<p>这里提一个注意点，就是grub是如何识别不同设备的，也就是说grub是如何找到/boot/grub/下的grub配置文件的。这里分两种情况讨论。</p>
+<p>第一种情况是boot单独分区，那么访问grub的配置文件时就不需要通过根文件系统来访问，即不需要/boot/grub/grub.conf来访问，而是通过grub的root命令将根设定为boot分区即可，这样访问就通过/grub/grub.conf即可。这种情形通常出现在根文件系统比较复杂或需要LVM支持，而boot只能放在基本磁盘上分区，因此将boot单独分区即可。</p>
+<p>第二种情况是将boot放在/下，不进行单独分区，这样就需要通过根文件系统来访问，即/boot/grub/grub.conf，这样根文件系统就不能做成LVM形式，只能是基本磁盘分区。</p>
+<h4 id="分区命名"><a href="#分区命名" class="headerlink" title="分区命名"></a>分区命名</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">hd(@,@)</span><br><span class="line"><span class="comment">#第一个@表示磁盘编号，第二个@表示分区编号，从0开始编号</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="第二阶段"><a href="#第二阶段" class="headerlink" title="第二阶段"></a>第二阶段</h4><ul>
+<li><p>提供菜单，并提供交互式接口</p>
+<ul>
+<li>e：编辑模式</li>
+<li>c：命令模式，交互式接口</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">help</span>：显示帮助信息</span><br><span class="line">root (hd@,@)：把指定磁盘分区设定为根设备</span><br><span class="line">find (hd@,@)/path：查找指定磁盘上的文件，如果有的话会自动补齐</span><br><span class="line">kernel /path：指明内核程序的位置用于本次内核启动</span><br><span class="line">initrd /path：指明内核的额外帮助文件即ramdisk，版本号要匹配</span><br><span class="line">boot：引导启动内核</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>加载用户选择的内核或操作系统，允许传递特定参数，允许隐藏菜单</p>
+</li>
+<li><p>为菜单设置密码提供保护措施</p>
+</li>
+</ul>
+<h4 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h4><p>grub2的配置文件在/boot/grub2/grub.cfg文件中，他依次调用/etc/grub.d目录下的配置文件来执行，还有一个配置文件在/etc/default/grub文件中。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#修改启动等待时间</span></span><br><span class="line">需要修改/etc/default/grub文件中的GRUB_TIMEOUT选项</span><br><span class="line"></span><br><span class="line"><span class="comment">#为grub加密，即需要密码才能修改grub启动以及编辑参数</span></span><br><span class="line">在/etc/grub.d/00_header 文件末尾添加如下内容</span><br><span class="line"><span class="built_in">set</span> superusers=<span class="string">'admin'</span></span><br><span class="line">password admin frdqy</span><br><span class="line"></span><br><span class="line"><span class="comment">#设置加密的密码，使用grub2-mkpasswd-pbkdf2</span></span><br><span class="line">[root@localhost default]@ grub2-mkpasswd-pbkdf2 </span><br><span class="line">Enter password: </span><br><span class="line">Reenter password: </span><br><span class="line">PBKDF2 <span class="built_in">hash</span> of your password is grub.pbkdf2.sha512.10000.9C469331A01C52D45794B9C812DEEA6D35DC876677D5552AE4AB7DA775C6FAAF495237DCB6E093F48CAFB42F259C4F0E15BE21AE1B146663B25135D605051795.08CEB5DDF92884E1239FBCF5C003BABCBD4FE11B73DF1557ECE31D028927F05AD013F5138B5E85A84A1E29EF51480837B878E5868D0E55F9C97B8D86CB9662F8</span><br><span class="line">再按照上文加入password字段即可</span><br></pre></td></tr></table></figure>
+
+<h4 id="登录模式"><a href="#登录模式" class="headerlink" title="登录模式"></a>登录模式</h4><p>登录模式主要主要有rescue、emergency、shell引导</p>
+<ul>
+<li>rescue模式只要在commandline配置末尾加s即可，类似单用户模式，ctrl+x启动</li>
+<li>emergency则直接将上面s替换为emergency即可，ctrl+x启动</li>
+</ul>
+<h4 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h4><h5 id="忘记root密码"><a href="#忘记root密码" class="headerlink" title="忘记root密码"></a>忘记root密码</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">首先，在内核一行后加“rd.break  console=tty0”，然后ctrl+x启动</span><br><span class="line">其次，挂载文件系统：mount -o remount /sysroot/</span><br><span class="line">之后，切换根目录到sysroot：chroot /sysroot/</span><br><span class="line">最后使用passwd修改root密码即可</span><br><span class="line"><span class="comment">#注意：可能有时需要在根下创建autorelabel，用于标记selinux环境</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="MBR引导丢失"><a href="#MBR引导丢失" class="headerlink" title="MBR引导丢失"></a>MBR引导丢失</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">即前446字节丢失</span><br><span class="line">需要挂载一个镜像来排错，用iso即可</span><br><span class="line">进入rescue后切换至源系统的根，然后找到启动分区(例如sda)，最后grub2-install /dev/sda即可</span><br></pre></td></tr></table></figure>
+
+<h5 id="配置文件丢失"><a href="#配置文件丢失" class="headerlink" title="配置文件丢失"></a>配置文件丢失</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">需要使用rpm的--force强制覆盖安装内核，之后再安装grub2到启动分区即可</span><br></pre></td></tr></table></figure>
+
+<h3 id="KERNEL"><a href="#KERNEL" class="headerlink" title="KERNEL"></a>KERNEL</h3><h4 id="Centos5"><a href="#Centos5" class="headerlink" title="Centos5"></a>Centos5</h4><h5 id="自身初始化"><a href="#自身初始化" class="headerlink" title="自身初始化"></a>自身初始化</h5><p>探测可识别到的所有硬件设备、加载硬件驱动程序(可能此时会借助于ramdisk加载驱动)、以只读方式挂载根文件系统、运行用户空间第一个应用程序/sbin/init。</p>
+<p>注意：init它的配置文件在centos6中存放在/etc/init/目录中，他会读取/etc/init.d/*.conf配置文件；而在centos7中，配置文件在/etc/systemd/system中和/usr/lib/systemd/system目录中</p>
+<h5 id="运行级别"><a href="#运行级别" class="headerlink" title="运行级别"></a>运行级别</h5><p>为了系统的运行或维护等目的而设定的机制，包括0~6七个级别，默认一般为3或5级别。定义在/etc/inittab中。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#级别切换</span></span><br><span class="line">init 数字</span><br><span class="line"><span class="comment">#级别查看，第一个表示上次级别，第二个是当前级别</span></span><br><span class="line">runlevel </span><br><span class="line">N 5</span><br><span class="line"><span class="comment">#也可以查看级别</span></span><br><span class="line">who -r</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>0：关机模式，shutdown</li>
+<li>1：单用户模式，root用户，无需认证；维护模式</li>
+<li>2：多用户模式，会启动网络功能，但不启动NFS；维护模式</li>
+<li>3：多用户模式，完全功能模式；文本界面，正常模式</li>
+<li>4：预留级别，目前无特别使用目的，但习惯以同3级别功能使用</li>
+<li>5：多用户模式，完全功能模式，图形界面，有图像接口</li>
+<li>6：重启模式，reboot</li>
+</ul>
+<h5 id="初始化脚本"><a href="#初始化脚本" class="headerlink" title="初始化脚本"></a>初始化脚本</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#/etc/rc.d/sysinit，系统初始化脚本</span></span><br><span class="line">任务：设计主机名、设置欢迎信息、激活udev和selinux、挂载/etc/fstab所有文件系统、检测根文件系统、以读写方式重新挂载根文件系统、设置系统时钟、根据/etc/sysctl.conf文件设置内核参数、激活lvm和软raid设备、激活各swap设备、加载额外设备的驱动程序、清理一些多余文件</span><br></pre></td></tr></table></figure>
+
+<h5 id="配置文件-1"><a href="#配置文件-1" class="headerlink" title="配置文件"></a>配置文件</h5><p>Centos5中init的配置文件，即所有运行脚本存放在/etc/init.d/目录中。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#每行定义一个action与之对应的process</span></span><br><span class="line">id:runlevel:action:process</span><br><span class="line">id：一个任务的标识符</span><br><span class="line">runlevels：在哪些级别启动此任务，为空表示所有级别</span><br><span class="line">action：在什么条件下启动此任务</span><br><span class="line">	<span class="built_in">wait</span>：等待切换至此任务执行级别时执行一次</span><br><span class="line">	respawn：此任务终止时就会重新启动一次</span><br><span class="line">	initdefault：设定默认允许级别，process此时被省略</span><br><span class="line">	sysinit：设定系统初始化方式，一般为指定/etc/rc.d/rc.sysinit脚本</span><br><span class="line">process：具体任务</span><br><span class="line"></span><br><span class="line"><span class="comment">#管控每个服务脚本在各级别下的启动或关闭状态</span></span><br><span class="line">chkconfig [option] name</span><br><span class="line">	--list：查看服务状态</span><br><span class="line">	--add：添加一个脚本</span><br><span class="line">	--del：删除一个脚本</span><br><span class="line">	--level LEVELs &#123;on|off|reset&#125;：修改级别，默认为2345</span><br><span class="line">	</span><br><span class="line"><span class="comment">#/etc/rc.d/rc @</span></span><br><span class="line">在这个文件中放了不同运行级别所需要的不同服务连接，他们都是连接至/etc/init.d/目录内的服务，其中命名都以K或S开头加数字加服务名</span><br><span class="line">	K**：需要停止的服务，数字越小越先关闭</span><br><span class="line">	S**：需要开启的服务，数字越小越先开启</span><br><span class="line">注意这里有一个独特的脚本叫做rc.local，他是最后执行的脚本，当用户想每次开机执行一条命令时即可编辑此脚本，在里面直接加命令即可，不需要单独添加服务。</span><br></pre></td></tr></table></figure>
+
+<h5 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h5><p>由/sbin/init脚本执行。</p>
+<p>流程为：设置默认运行级别、运行系统初始化脚本(/etc/rc.d/sysinit)、关闭对应级别下需要停止的服务、启动对应级别下需要开启的服务(/etc/rc.d/rc @)、设置登录终端。</p>
+<h4 id="Centos6"><a href="#Centos6" class="headerlink" title="Centos6"></a>Centos6</h4><p>本质和Centos5仍然时一样的，只不过由于启动进程被换成了upstart(依然是/sbin/init)，其描述文件发生了变化。即配置文件都是/etc/init/*.conf结尾的配置文件，而/etc/inittab仅用于定义默认运行级别。其语法为upstart语法，但由于centos7以后就不用该语法，且centos7已经缓存systemd来启动了，因此此处不做过多介绍。</p>
+<h4 id="Centos7"><a href="#Centos7" class="headerlink" title="Centos7"></a>Centos7</h4><p>init程序：systemd</p>
+<h5 id="特性"><a href="#特性" class="headerlink" title="特性"></a>特性</h5><p>系统引导时实现服务并行启动；按需激活进程；系统状态快照；基于依赖关系定义服务控制逻辑</p>
+<p>基于socket的激活机制：socket与程序分离</p>
+<p>基于bus的激活机制：总线有对某个接口的请求时，激活该接口</p>
+<p>基于device的激活机制：自动激活、挂载设备</p>
+<p>基于path的激活机制：监控某一路径，可以对特定行为进行响应</p>
+<p>系统快照：保存unit当前状态信息于持久存储设备中</p>
+<p>向后兼容sysv init脚本：/etc/init.d/的脚本仍可以执行</p>
+<h5 id="新概念"><a href="#新概念" class="headerlink" title="新概念"></a>新概念</h5><p>unit：所有的系统资源都称作unit。它统一了资源配置格式，而使用文件后缀名来区别不同类型的文件及服务。</p>
+<p>配置文件：/usr/lib/systemd/system/*、/etc/systemd/system</p>
+<h5 id="unit常见类型"><a href="#unit常见类型" class="headerlink" title="unit常见类型"></a>unit常见类型</h5><p>service unit：文件扩展名为.service，用于定义系统服务</p>
+<p>target unit：文件扩展名为.target，用于模拟实现运行级别，由于Centos7上没有运行级别概念，但是为了兼容6，就定义了target来模拟不同的级别</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#获取当前用户级别</span></span><br><span class="line">[root@localhost init.d]<span class="comment"># systemctl get-default </span></span><br><span class="line">graphical.target</span><br></pre></td></tr></table></figure>
+
+<p>device unit：文件扩展名为.device，用于定义内核识别的设备</p>
+<p>mount unit：文件扩展名为.mount，用于定义文件系统挂载点</p>
+<p>socket unit：文件扩展名为.socket，用于进程间通信</p>
+<p>snapshot unit：文件扩展名为.snapshot，管理系统快照</p>
+<p>swap unit：文件扩展名为.swap，用于标识swap设备</p>
+<p>automount unit：文件扩展名为.automount，文件系统自动挂载设备</p>
+<p>path unit：文件扩展名为.path用于定义文件系统中的文件和目录</p>
+<h5 id="systemctl命令"><a href="#systemctl命令" class="headerlink" title="systemctl命令"></a>systemctl命令</h5><h6 id="管理系统服务"><a href="#管理系统服务" class="headerlink" title="管理系统服务"></a>管理系统服务</h6><p>主要靠service类型的unit文件来实现控制</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">systemctl [option] COMMAND [NAME...]</span><br><span class="line">	start：启动服务</span><br><span class="line">	stop：停止服务</span><br><span class="line">	restart：重启服务</span><br><span class="line">	status：显示状态</span><br><span class="line">	try-restart：条件式重启</span><br><span class="line">	reload-or-restart：重载或重启服务</span><br><span class="line">	reload-or-try-restart：重载或条件重启服务</span><br><span class="line">	daemon-reload：重读unit文件</span><br><span class="line">	is-adtive：查看是否激活</span><br><span class="line">	list-units：列出所有已激活的服务</span><br><span class="line">		--<span class="built_in">type</span>/-t：指明类型</span><br><span class="line">		--all：显示所有选项</span><br><span class="line">	<span class="built_in">enable</span>：设置服务开机自启</span><br><span class="line">	<span class="built_in">disable</span>：设置服务禁止开机自启</span><br><span class="line">	is-enable：查询服务是否能开机自启</span><br><span class="line">	mask：禁止某服务设置为开机自启</span><br><span class="line">	unmask：取消禁止某服务开机自启</span><br><span class="line">	list-dependencies：查看服务的依赖关系</span><br></pre></td></tr></table></figure>
+
+<h6 id="管理target"><a href="#管理target" class="headerlink" title="管理target"></a>管理target</h6><table>
+<thead>
+<tr>
+<th>级别</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>runlevel0.target；poweroff.target</td>
+</tr>
+<tr>
+<td>1</td>
+<td>runlevel1.tartget；rescue.target</td>
+</tr>
+<tr>
+<td>2</td>
+<td>runlevel2.tartget；multi-user.target</td>
+</tr>
+<tr>
+<td>3</td>
+<td>runlevel3.tartget；multi-user.target</td>
+</tr>
+<tr>
+<td>4</td>
+<td>runlevel4.tartget；multi-user.target</td>
+</tr>
+<tr>
+<td>5</td>
+<td>runlevel5.tartget；graphical.target</td>
+</tr>
+<tr>
+<td>6</td>
+<td>runlevel6.tartget；reboot.target</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#级别切换</span></span><br><span class="line">systemctl isolate NAME.target</span><br><span class="line"><span class="comment">#查看级别</span></span><br><span class="line">systemctl list-units -t target</span><br><span class="line"><span class="comment">#获取默认运行级别</span></span><br><span class="line">systemctl get-default</span><br><span class="line"><span class="comment">#修改默认运行级别</span></span><br><span class="line"><span class="comment">#修改运行级别实质是修改/etc/systemd/system/default.target的符号链接实现的</span></span><br><span class="line"><span class="comment">#且定义在不同级别运行的服务也会在/etc/systemd/system/下对应的目录中创建符号链接，他们实际是/usr/lib/systemd/system/下对应unit的符号链接</span></span><br><span class="line">systemctl <span class="built_in">set</span>-default NAME.target</span><br><span class="line"><span class="comment">#切换紧急救援模式</span></span><br><span class="line">systemctl rescue</span><br><span class="line"><span class="comment">#切换至紧急模式，不会装载额外系统驱动或者多余设置</span></span><br><span class="line"><span class="comment">#拿Centos6来说，rescue模式还会执行sysinit初始化脚本，而emergency不会执行</span></span><br><span class="line">systemctl emergency</span><br></pre></td></tr></table></figure>
+
+<h6 id="其他命令"><a href="#其他命令" class="headerlink" title="其他命令"></a>其他命令</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#关机</span></span><br><span class="line">systemctl halt；systemctl poweroff</span><br><span class="line"><span class="comment">#重启</span></span><br><span class="line">systemctl reboot</span><br><span class="line"><span class="comment">#挂起(睡眠)</span></span><br><span class="line">systemctl <span class="built_in">suspend</span></span><br><span class="line"><span class="comment">#快照</span></span><br><span class="line">systemctl hibernate</span><br><span class="line"><span class="comment">#快照并挂起(睡眠)</span></span><br><span class="line">systemctl hybird-sleep</span><br></pre></td></tr></table></figure>
+
+<h4 id="unit文件格式"><a href="#unit文件格式" class="headerlink" title="unit文件格式"></a>unit文件格式</h4><p>由三部分组成[unit]、[service]、[install]</p>
+<p>[unit]：定义与unit类型无关的信息。如描述信息和依赖关系</p>
+<p>[service]：定义与特定类型相关的专用选项，各种类型均不一样</p>
+<p>[install]：定义由enable和disable实现服务启动关闭时用到的选项</p>
+<h5 id="unit段常用选项"><a href="#unit段常用选项" class="headerlink" title="unit段常用选项"></a>unit段常用选项</h5><p>description：描述信息</p>
+<p>after：定义启动次序，表示当前unit晚于哪些unit</p>
+<p>requires：指明依赖到的其他unit，即依赖关系，要求比wants强，即必须全部启动</p>
+<p>wants：指明依赖到的其他unit，即依赖关系，但即使不启动，本服务自身也能启动</p>
+<p>conflicts：定义units之间的依赖关系</p>
+<h5 id="service段常用选项"><a href="#service段常用选项" class="headerlink" title="service段常用选项"></a>service段常用选项</h5><p>type：定义影响execstart及相关参数的功能的unit进程启动类型</p>
+<p>类型有：simple：默认类型，表示为主进程</p>
+<p>​                forking：表示进程会生成一个主进程，自身会退出</p>
+<p>​                oneshot：一次性进程</p>
+<p>​                dbus：后续进程在主进程得到dbus后才能启动</p>
+<p>​                notify：后续进程在主进程发送notify后才能启动</p>
+<p>​                idle：类似于simple</p>
+<p>execstart：指明启动unit要运行的命令或脚本</p>
+<p>execstop：停止unit要运行的命令或脚本</p>
+<p>restart：进程意外退出后重启的命令或脚本</p>
+<p>environmentfile：环境配置文件，在execstart前读取，为其提供变量</p>
+<h5 id="install段常用选项"><a href="#install段常用选项" class="headerlink" title="install段常用选项"></a>install段常用选项</h5><p>alias：当前程序别名</p>
+<p>requiredby：被哪些unit所依赖，强依赖</p>
+<p>wantedby：被那些unit所依赖，弱依赖</p>
+<h5 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h5><p>当修改或新建unit文件时，要通知systemd重载此配置文件</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl daemon-reload</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/" rel="tag"># 启动流程</a>
+              <a href="/tags/systemd/" rel="tag"># systemd</a>
+              <a href="/tags/init/" rel="tag"># init</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/06/%E7%B3%BB%E7%BB%9F%E5%AE%89%E8%A3%85%E8%87%AA%E5%8A%A8%E5%8C%96/" rel="prev" title="系统安装自动化">
+      <i class="fa fa-chevron-left"></i> 系统安装自动化
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/01/06/%E5%86%85%E6%A0%B8%E7%AE%A1%E7%90%86/" rel="next" title="内核管理">
+      内核管理 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#POST"><span class="nav-number">1.</span> <span class="nav-text">POST</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BOOT"><span class="nav-number">2.</span> <span class="nav-text">BOOT</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#分区命名"><span class="nav-number">2.1.</span> <span class="nav-text">分区命名</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#第二阶段"><span class="nav-number">2.2.</span> <span class="nav-text">第二阶段</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置文件"><span class="nav-number">2.3.</span> <span class="nav-text">配置文件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#登录模式"><span class="nav-number">2.4.</span> <span class="nav-text">登录模式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#实例"><span class="nav-number">2.5.</span> <span class="nav-text">实例</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#忘记root密码"><span class="nav-number">2.5.1.</span> <span class="nav-text">忘记root密码</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#MBR引导丢失"><span class="nav-number">2.5.2.</span> <span class="nav-text">MBR引导丢失</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#配置文件丢失"><span class="nav-number">2.5.3.</span> <span class="nav-text">配置文件丢失</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#KERNEL"><span class="nav-number">3.</span> <span class="nav-text">KERNEL</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Centos5"><span class="nav-number">3.1.</span> <span class="nav-text">Centos5</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#自身初始化"><span class="nav-number">3.1.1.</span> <span class="nav-text">自身初始化</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#运行级别"><span class="nav-number">3.1.2.</span> <span class="nav-text">运行级别</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#初始化脚本"><span class="nav-number">3.1.3.</span> <span class="nav-text">初始化脚本</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#配置文件-1"><span class="nav-number">3.1.4.</span> <span class="nav-text">配置文件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#总结"><span class="nav-number">3.1.5.</span> <span class="nav-text">总结</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Centos6"><span class="nav-number">3.2.</span> <span class="nav-text">Centos6</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Centos7"><span class="nav-number">3.3.</span> <span class="nav-text">Centos7</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#特性"><span class="nav-number">3.3.1.</span> <span class="nav-text">特性</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#新概念"><span class="nav-number">3.3.2.</span> <span class="nav-text">新概念</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#unit常见类型"><span class="nav-number">3.3.3.</span> <span class="nav-text">unit常见类型</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#systemctl命令"><span class="nav-number">3.3.4.</span> <span class="nav-text">systemctl命令</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#管理系统服务"><span class="nav-number">3.3.4.1.</span> <span class="nav-text">管理系统服务</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#管理target"><span class="nav-number">3.3.4.2.</span> <span class="nav-text">管理target</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#其他命令"><span class="nav-number">3.3.4.3.</span> <span class="nav-text">其他命令</span></a></li></ol></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#unit文件格式"><span class="nav-number">3.4.</span> <span class="nav-text">unit文件格式</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#unit段常用选项"><span class="nav-number">3.4.1.</span> <span class="nav-text">unit段常用选项</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#service段常用选项"><span class="nav-number">3.4.2.</span> <span class="nav-text">service段常用选项</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#install段常用选项"><span class="nav-number">3.4.3.</span> <span class="nav-text">install段常用选项</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#注意"><span class="nav-number">3.4.4.</span> <span class="nav-text">注意</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

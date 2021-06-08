@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="事务redis事务通过Multi、Exec、Watch等命令实现。它只是将一些列命令打包执行，当这些命令没有执行完时不会处理其他命令。不支持回滚操作。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis(3)-事务、订阅、缓存">
+<meta property="og:url" content="http://yoursite.com/2020/02/13/Redis-3-%E4%BA%8B%E5%8A%A1%E3%80%81%E8%AE%A2%E9%98%85%E3%80%81%E7%BC%93%E5%AD%98/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="事务redis事务通过Multi、Exec、Watch等命令实现。它只是将一些列命令打包执行，当这些命令没有执行完时不会处理其他命令。不支持回滚操作。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-02-13T14:00:46.000Z">
+<meta property="article:modified_time" content="2020-02-19T02:12:24.846Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="redis">
+<meta property="article:tag" content="bloom过滤">
+<meta property="article:tag" content="缓存穿透">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/02/13/Redis-3-%E4%BA%8B%E5%8A%A1%E3%80%81%E8%AE%A2%E9%98%85%E3%80%81%E7%BC%93%E5%AD%98/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Redis(3)-事务、订阅、缓存 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/13/Redis-3-%E4%BA%8B%E5%8A%A1%E3%80%81%E8%AE%A2%E9%98%85%E3%80%81%E7%BC%93%E5%AD%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Redis(3)-事务、订阅、缓存
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-02-13 22:00:46" itemprop="dateCreated datePublished" datetime="2020-02-13T22:00:46+08:00">2020-02-13</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-19 10:12:24" itemprop="dateModified" datetime="2020-02-19T10:12:24+08:00">2020-02-19</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Redis/" itemprop="url" rel="index">
+                    <span itemprop="name">Redis</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="事务"><a href="#事务" class="headerlink" title="事务"></a>事务</h3><p>redis事务通过Multi、Exec、Watch等命令实现。它只是将一些列命令打包执行，当这些命令没有执行完时不会处理其他命令。不支持回滚操作。</p>
+<a id="more"></a>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#首先在redis-cli中执行MULTI命令启动事务</span></span><br><span class="line">MULTI</span><br><span class="line"><span class="comment">#使用MULTI后直接写各个命令即可，注意这些命令没有被执行</span></span><br><span class="line">...</span><br><span class="line">...</span><br><span class="line"><span class="comment">#执行上述MULTI定义的命令序列，即执行事务，并一次性返回所有操作结果</span></span><br><span class="line">EXEC</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">WATCH命令用于在EXEC执行前监视指定的任意数量的键，如果有键发生改变则拒绝执行事务</span><br><span class="line">WATCH命令在MULTI之前使用，且指定键名，如：WATCH IP表示监听名称为IP的键</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="消息订阅"><a href="#消息订阅" class="headerlink" title="消息订阅"></a>消息订阅</h3><p>由list实现消息队列，每个list相当于一个channel频道。由list维护消息队列的效率很高，因为list相当于一个链表，在它left和right进行元素的插入和删除的复杂度是常量级别。</p>
+<p>使用subscribe和publish实现消息的订阅和推送，用unsubscribe进行退订，用psubscribe进行模式订阅</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#订阅名为news的channel</span></span><br><span class="line">subscribe news</span><br><span class="line"></span><br><span class="line"><span class="comment">#另起一个终端进行消息推送，即可在订阅端接收到消息</span></span><br><span class="line">publish news hello</span><br><span class="line"></span><br><span class="line"><span class="comment">#模式订阅，表示订阅了new.io和new.it两个</span></span><br><span class="line">psubscribe new.i[to]</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="缓存"><a href="#缓存" class="headerlink" title="缓存"></a>缓存</h3><p>redis既可以作数据库也可以作缓存，缓存的数据肯定不是全量的数据库而是一些所谓的热数据，那么如何定义热数据呢？这就引入了key的有效期机制和redis的内存调度机制。</p>
+<h4 id="有效期"><a href="#有效期" class="headerlink" title="有效期"></a>有效期</h4><p>在set命令时就可以设置有效期</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#设置key和value</span></span><br><span class="line"><span class="built_in">help</span> <span class="built_in">set</span></span><br><span class="line">SET key value [expiration EX seconds|PX milliseconds] [NX|XX]</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">NX：键存在时不能操作，类似于新建</span><br><span class="line">XX：键存在时才能操作，类似于更新</span><br><span class="line">EX seconds：键多少秒后到期，设置存活时间(注意存活时间不会因为访问次数而增加)，如果发生写操作会修改过期时间</span><br></pre></td></tr></table></figure>
+
+<p>当某个键过期时，redis不会立刻在内存中删除这个数据，这里有两种方式来处理有效期到期的键</p>
+<ul>
+<li>被动方式：当客户端访问时发现ttl到期说明key过期从而删除</li>
+<li>主动方式：redis以轮询方式查询一部分key来检测是否过期</li>
+</ul>
+<h4 id="内存调度"><a href="#内存调度" class="headerlink" title="内存调度"></a>内存调度</h4><p>当redis内存占满了时又不断接收到写操作请求，那么就会引起内存调度，常见的调度方式有：</p>
+<ul>
+<li>noeviction：只返回错误信息，不做key的删除</li>
+<li>LRU：删除最近最少使用的key</li>
+<li>LFU：删除使用次数最少的key</li>
+</ul>
+<h4 id="bloom过滤器"><a href="#bloom过滤器" class="headerlink" title="bloom过滤器"></a>bloom过滤器</h4><p>考虑一种情况，当客户端请求一个key时redis内存中没有，那么这个请求会查询关系型数据库，如果关系型数据库也没有，那么才返回查找失败，这个行为叫做缓存穿透，这会浪费关系型数据库的大量时间消耗。鉴于这种情况提出了bloom过滤器的概念。</p>
+<p>bloom过滤器是一个redis的第三方插件，它实现将关系型数据库中有的数据进行三次hash映射函数的映射，并在内存中维护一个bitmap数组，将每个元素的三次hash值依次存放在对应的bitmap位中。</p>
+<p>在经过上述处理后，假设现在有一个请求到达，这个请求如果没有被redis名字，那么进行hash计算，看看计算的结果有没有与bitmap匹配的结果，如果有说明关系型数据库中有该值，如果没有则说明不匹配，则不查询后端数据库。但这里要考虑一种特殊情况，即假设请求的是关系型数据库不存在的键，但是hash的值却与现存的bitmap重复了(可能一部分是一个键，一部分是另一个键)，那么这种情况也会查询关系型数据库，会造成一定的损耗(出现该情况可以将该key加入到redis中，值设置为空，以防下次穿透)。因此，bloom过滤器是概率性解决问题，但是概率很大且维护bitmap的开销很小，因此性能较好。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#安装</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/RedisBloom/RedisBloom.git</span><br><span class="line"><span class="comment">#编译，编译后出现.so文件，即为redis模块</span></span><br><span class="line">make</span><br><span class="line"><span class="comment">#启动时加载，或者在配置文件中loadmodule均可，路径必须是绝对路径</span></span><br><span class="line">redis-server --loadmodule /path/to/redisbloom.so</span><br><span class="line"></span><br><span class="line"><span class="comment">#命令</span></span><br><span class="line"><span class="comment">#将键foo添加到过滤器newfilter</span></span><br><span class="line">BF.ADD newFilter foo</span><br><span class="line"><span class="comment">#判断键是否存在</span></span><br><span class="line">BF.EXISTS newFilter foo</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/redis/" rel="tag"># redis</a>
+              <a href="/tags/bloom%E8%BF%87%E6%BB%A4/" rel="tag"># bloom过滤</a>
+              <a href="/tags/%E7%BC%93%E5%AD%98%E7%A9%BF%E9%80%8F/" rel="tag"># 缓存穿透</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/12/Redis-2-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E5%92%8C%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="prev" title="Redis(2)-数据类型和常用命令">
+      <i class="fa fa-chevron-left"></i> Redis(2)-数据类型和常用命令
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/02/13/Redis-4-%E6%8C%81%E4%B9%85%E5%8C%96/" rel="next" title="Redis(4)-持久化">
+      Redis(4)-持久化 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#事务"><span class="nav-number">1.</span> <span class="nav-text">事务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#消息订阅"><span class="nav-number">2.</span> <span class="nav-text">消息订阅</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存"><span class="nav-number">3.</span> <span class="nav-text">缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#有效期"><span class="nav-number">3.1.</span> <span class="nav-text">有效期</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内存调度"><span class="nav-number">3.2.</span> <span class="nav-text">内存调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#bloom过滤器"><span class="nav-number">3.3.</span> <span class="nav-text">bloom过滤器</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

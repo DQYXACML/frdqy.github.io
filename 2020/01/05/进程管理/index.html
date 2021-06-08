@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="pstree显示进程树信息">
+<meta property="og:type" content="article">
+<meta property="og:title" content="进程管理">
+<meta property="og:url" content="http://yoursite.com/2020/01/05/%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="pstree显示进程树信息">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-05T05:44:15.000Z">
+<meta property="article:modified_time" content="2020-02-16T02:42:58.127Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="进程管理">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/05/%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>进程管理 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/05/%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          进程管理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-01-05 13:44:15" itemprop="dateCreated datePublished" datetime="2020-01-05T13:44:15+08:00">2020-01-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-16 10:42:58" itemprop="dateModified" datetime="2020-02-16T10:42:58+08:00">2020-02-16</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="pstree"><a href="#pstree" class="headerlink" title="pstree"></a>pstree</h3><p>显示进程树信息</p>
+<a id="more"></a>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#显示的一部分</span></span><br><span class="line">[root@localhost 1]<span class="comment"># pstree</span></span><br><span class="line">systemd─┬─ModemManager───2*[&#123;ModemManager&#125;]</span><br><span class="line">        ├─NetworkManager───2*[&#123;NetworkManager&#125;]</span><br><span class="line">        ├─VGAuthService</span><br><span class="line">        ├─2*[abrt-dump-journ]</span><br><span class="line">        ├─abrtd───2*[&#123;abrtd&#125;]</span><br><span class="line">        ├─accounts-daemon───2*[&#123;accounts-daemon&#125;]</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="ps"><a href="#ps" class="headerlink" title="ps"></a>ps</h3><p>显示当前进程运行的状态快照。内核通过/proc/将内核信息输出给用户。其中具体/proc/PID文件中的文件都是内核输出的参数，文件内容即是当前的内核对应数据。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#ps选项有三种风格，注意区分</span></span><br><span class="line">ps [option]</span><br><span class="line">	a：所有与终端相关的进程</span><br><span class="line">	x：所有与终端无关的进程</span><br><span class="line">	u：以用户为中心组织进程状态信息显示</span><br><span class="line">	-e：显示所有进程</span><br><span class="line">	-f：完整格式</span><br><span class="line">	-H：以层级结构显示进程相关信息</span><br><span class="line">	-o/o field1,field2...：自定义显示字段，后面加字段名即可</span><br><span class="line"><span class="comment">#常用field</span></span><br><span class="line">pid、ni、pri、psr、pcpu、<span class="built_in">stat</span>、comm、tty、ppid、rtprio</span><br><span class="line">ni：nice值，范围-20~19，越小优先级越高</span><br><span class="line">priority：优先级</span><br><span class="line">rtprio：实时优先级</span><br><span class="line"><span class="comment">#常用组合：ps aux</span></span><br><span class="line">[root@localhost 1]<span class="comment"># ps aux</span></span><br><span class="line">USER        PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAN</span><br><span class="line">VSZ：虚拟内存集</span><br><span class="line">RSS：常驻内存集</span><br><span class="line">STAT：</span><br><span class="line">	R：运行态</span><br><span class="line">	S：可终端睡眠</span><br><span class="line">	D：不可中断睡眠</span><br><span class="line">	T：停止态</span><br><span class="line">	Z：僵死态，自己没资源了，等待父进程回收</span><br><span class="line">	+：前台进程</span><br><span class="line">	l：多线程进程</span><br><span class="line">	N：低优先级进程</span><br><span class="line">	&lt;：高优先进程</span><br><span class="line">	s：会话引领者</span><br><span class="line">	</span><br><span class="line"><span class="comment">#常用组合：ps -ef/F</span></span><br><span class="line">[root@localhost 1]<span class="comment"># ps -eF</span></span><br><span class="line">UID         PID   PPID  C    SZ   RSS PSR STIME TTY          TIME CMD</span><br><span class="line">PPID：父进程id</span><br><span class="line">C：cpu占用百分比</span><br><span class="line">PSR：占用哪个cpu</span><br><span class="line">STIME：进程开始时间</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="pgrep-pkill"><a href="#pgrep-pkill" class="headerlink" title="pgrep/pkill"></a>pgrep/pkill</h3><p>根据进程的名字或其他属性来查询进程或向进程发送信号。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pgrep/pkill [option] pattern</span><br><span class="line">	-u/U uid：显示指定用户进程</span><br><span class="line">	-t tty：与指定终端相关的进程</span><br><span class="line">	-l：显示进程名</span><br><span class="line">	-a：显示完整格式进程名</span><br><span class="line">	-P pid：显示此进程的子进程</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="pidof"><a href="#pidof" class="headerlink" title="pidof"></a>pidof</h3><p>根据进程名取指定进程的进程号</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@localhost 1]# pidof systemd</span><br><span class="line">8331 8324 1292 1274 1</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="top"><a href="#top" class="headerlink" title="top"></a>top</h3><p>动态显示进程信息</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">[root@localhost 1]<span class="comment"># top</span></span><br><span class="line">top - 04:41:07 up  8:28,  1 user,  load average: 0.09, 0.05, 0.01</span><br><span class="line">Tasks: 261 total,   1 running, 260 sleeping,   0 stopped,   0 zombie</span><br><span class="line">%Cpu(s):  0.0 us,  0.0 sy,  0.0 ni, 99.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st</span><br><span class="line">MiB Mem :    798.1 total,     85.0 free,    467.6 used,    245.5 buff/cache</span><br><span class="line">MiB Swap:   2048.0 total,   1759.0 free,    289.0 used.    172.5 avail Mem</span><br><span class="line">PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND</span><br><span class="line"></span><br><span class="line">	-d @：指定显示时间间隔</span><br><span class="line">	-b：以批次方式显示</span><br><span class="line">	-n @：显示多少批次</span><br><span class="line"></span><br><span class="line"><span class="comment">#第一行；也可以用uptime显示</span></span><br><span class="line">当前时间；运行时间；登录当前系统的用户数；平均负载(过去1分钟、5分钟、15分钟的平均队列长度，即等待cpu进程数)</span><br><span class="line"><span class="comment">#第二行</span></span><br><span class="line">一共运行进程数；运行数、睡眠数、停止数、僵死数</span><br><span class="line"><span class="comment">#第三行</span></span><br><span class="line">cpu占用百分比</span><br><span class="line">	us：用户空间百分比</span><br><span class="line">	sy：内核空间百分比</span><br><span class="line">	ni：用于nice值调整占用的cpu百分比</span><br><span class="line">	id：空闲百分比</span><br><span class="line">	wa：等待io完成所消耗cpu时间百分比</span><br><span class="line">	hi：处理硬件中断占用cpu百分比</span><br><span class="line">	si：处理软件中断占用cpu百分比</span><br><span class="line">	st：被虚拟化程序占用的cpu百分比</span><br><span class="line"><span class="comment">#第四行</span></span><br><span class="line">物理空间占用情况：总空间；空闲空间；已使用空间；用于缓存和缓冲的内存空间</span><br><span class="line"><span class="comment">#第五行</span></span><br><span class="line">交换分区占用情况：总空间；空闲空间；已使用空间；用于缓存和缓冲的内存空间</span><br><span class="line"><span class="comment">#第六行</span></span><br><span class="line">SHR：共享内存空间；其他与ps显示意义一样</span><br><span class="line"></span><br><span class="line"><span class="comment">#内部命令</span></span><br><span class="line">P：以占据CPU百分比显示</span><br><span class="line">M：以占据内存百分比显示</span><br><span class="line">T：以累计占用CPU时间排序</span><br><span class="line">l：显示/隐藏第一行信息</span><br><span class="line">t：显示/隐藏第二行信息</span><br><span class="line">m：显示隐藏第三行信息</span><br><span class="line">s：修改显示时间间隔</span><br><span class="line">k：终止指定进程</span><br><span class="line">1：显示全部cpu</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="htop"><a href="#htop" class="headerlink" title="htop"></a>htop</h3><p>改进版的top</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#安装</span></span><br><span class="line"><span class="comment">#安装epel库</span></span><br><span class="line">dnf install epel-release -y</span><br><span class="line">dnf install htop </span><br><span class="line"></span><br><span class="line">htop [option]</span><br><span class="line">	-d @：指定延迟时间</span><br><span class="line">	-s colume：以指定字段进行排序</span><br><span class="line">	-u UserName：仅显示指定user的进程</span><br><span class="line">u：选择指定用户进程</span><br><span class="line">H：显示/隐藏用户线程</span><br><span class="line">K：显示隐藏内核线程</span><br><span class="line">l：跟踪一个进程的操作</span><br><span class="line">s：跟踪一个进程的系统调用</span><br><span class="line">t：以层级关系显示各进程状态</span><br><span class="line">a：选定进程运行在指定cpu上</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="vmstat"><a href="#vmstat" class="headerlink" title="vmstat"></a>vmstat</h3><p>管理虚拟内存信息</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">vmstat [option] [delay [count]]</span><br><span class="line">	delay：多久刷新一次</span><br><span class="line">	count：刷新多少次</span><br><span class="line">	-s：显示内存统计数据</span><br><span class="line">[root@localhost ~]# vmstat</span><br><span class="line">procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----</span><br><span class="line"> r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st</span><br><span class="line"> </span><br><span class="line">procs：</span><br><span class="line"> 	r：等待运行进程的个数</span><br><span class="line"> 	b：处于不可中断睡眠的进程个数</span><br><span class="line">memory：</span><br><span class="line">	swpd：交换内存使用情况，若使用则说明内存不足</span><br><span class="line">	free：空闲的物理内存总量</span><br><span class="line">	buffer：用于buffer的内存总量</span><br><span class="line">	cache：用于cache内存总量</span><br><span class="line">swap：</span><br><span class="line">	si：数据进入swap的速率(kb&#x2F;s)</span><br><span class="line">	so：数据离开swap的速率(kb&#x2F;s)</span><br><span class="line">io：</span><br><span class="line">	bi：从块设备读入数据到系统的速度(kb&#x2F;s)</span><br><span class="line">	bo：保存数据到块设备的速度(kb&#x2F;s)</span><br><span class="line">system：</span><br><span class="line">	in：中断速率</span><br><span class="line">	cs：进程上下文切换速率</span><br><span class="line">cpu：</span><br><span class="line">	us：用户空间占用百分比</span><br><span class="line">	sy：系统占用百分比</span><br><span class="line">	id：空闲时间占用百分比</span><br><span class="line">	wa：等待时间百分比</span><br><span class="line">	st：被虚拟化偷走的时间</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="pmap"><a href="#pmap" class="headerlink" title="pmap"></a>pmap</h3><p>显示进程内存映射，实际是通过查看/proc下对应进程的maps文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">pmap [option] pid</span><br><span class="line">	-x：显示详细格式信息</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="dstat"><a href="#dstat" class="headerlink" title="dstat"></a>dstat</h3><p>生成系统资源统计数据，几乎包括上述所有功能</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">dstat [option] [delay[count]]</span><br><span class="line">	delay：多久刷新一次</span><br><span class="line">	count：刷新多少次</span><br><span class="line">	-c：查看cpu信息</span><br><span class="line">	-d：查看disk信息</span><br><span class="line">	-m：查看内存信息</span><br><span class="line">	-g：查看内存页交换信息</span><br><span class="line">	-n：显示网络信息</span><br><span class="line">	-r：显示io统计数据</span><br><span class="line">	-p：统计进程相关数据</span><br><span class="line">	-s：统计swap数据</span><br><span class="line">	--tcp：显示tcp相关信息</span><br><span class="line">	--udp：显示udp相关信息</span><br><span class="line">	--raw：显示裸套接字信息</span><br><span class="line">	--socket：显示所有套接字信息</span><br><span class="line">	--ipc：显示进程间交换信息</span><br><span class="line">	--top-cpu：显示最占用cpu的信息</span><br><span class="line">	--top-io：显示最占用io的信息</span><br><span class="line">	--top-mem：显示最占用内存的信息</span><br><span class="line">	--top-lantency：显示延迟最大的进程信息</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="kill"><a href="#kill" class="headerlink" title="kill"></a>kill</h3><p>终止一个进程，本质是向进程发送一个命令。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">kill [option] pid</span><br><span class="line">	-l：列出可用信号</span><br><span class="line">	-s @：发送指定信号</span><br><span class="line">	% @：终止指定id的作业(jobs)</span><br><span class="line">常用信号</span><br><span class="line">	SIGHUP：不重启读配置文件</span><br><span class="line">	SIGINT：终止正在运行的进程，相当于Ctrl+c</span><br><span class="line">	SIGTERM：默认信号，终止正在运行的进程(关闭进程相关后再杀死)</span><br><span class="line">	SIGKILL：杀死正在执行的进程(不管进程在干什么直接杀死，可能会损坏文件)</span><br><span class="line">	SIGCONT：后天进程继续执行</span><br><span class="line">	SIGSTOP：将进程送到后台</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="killall"><a href="#killall" class="headerlink" title="killall"></a>killall</h3><p>根据进程名杀死进程，用于关闭一整个服务</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">killall [SIGNAL] PRRC_NAME</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="fg-bg-jobs-nohup"><a href="#fg-bg-jobs-nohup" class="headerlink" title="fg/bg/jobs/nohup"></a>fg/bg/jobs/nohup</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#把指定作业调往前台</span></span><br><span class="line"><span class="built_in">fg</span> jobs_num</span><br><span class="line"><span class="comment">#把作业送往后台</span></span><br><span class="line"><span class="built_in">bg</span> jobs_num</span><br><span class="line"><span class="comment">#查询作业</span></span><br><span class="line"><span class="built_in">jobs</span></span><br><span class="line"><span class="comment">#将指定作业剥离与中断关系在后台运行</span></span><br><span class="line">nohup COMMAND/FIEL &amp;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="进程优先级调整"><a href="#进程优先级调整" class="headerlink" title="进程优先级调整"></a>进程优先级调整</h3><p>可通过nice值调整的优先级范围：100-139，分别对应于-20~19。nice值越低优先级越高</p>
+<p>进程启动时，其nice值默认为0，其优先级是120。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#仅root可以调低nice值</span></span><br><span class="line">nice [option] [COMMAND]</span><br><span class="line">	-n NICE：以指定nice值启动</span><br><span class="line"></span><br><span class="line"><span class="comment">#调整nice</span></span><br><span class="line">renice [option] pid</span><br><span class="line">	-n NICE：调整nice值</span><br><span class="line">	</span><br><span class="line"><span class="comment">#查看nice和优先级</span></span><br><span class="line">ps axo pid,ni,priority,comm</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86/" rel="tag"># 进程管理</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/04/Linux%E7%BD%91%E7%BB%9C%E5%B1%9E%E6%80%A7%E9%85%8D%E7%BD%AE/" rel="prev" title="Linux网络属性配置">
+      <i class="fa fa-chevron-left"></i> Linux网络属性配置
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/01/06/%E7%B3%BB%E7%BB%9F%E5%AE%89%E8%A3%85%E8%87%AA%E5%8A%A8%E5%8C%96/" rel="next" title="系统安装自动化">
+      系统安装自动化 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#pstree"><span class="nav-number">1.</span> <span class="nav-text">pstree</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ps"><span class="nav-number">2.</span> <span class="nav-text">ps</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pgrep-pkill"><span class="nav-number">3.</span> <span class="nav-text">pgrep&#x2F;pkill</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pidof"><span class="nav-number">4.</span> <span class="nav-text">pidof</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#top"><span class="nav-number">5.</span> <span class="nav-text">top</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#htop"><span class="nav-number">6.</span> <span class="nav-text">htop</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#vmstat"><span class="nav-number">7.</span> <span class="nav-text">vmstat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pmap"><span class="nav-number">8.</span> <span class="nav-text">pmap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dstat"><span class="nav-number">9.</span> <span class="nav-text">dstat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kill"><span class="nav-number">10.</span> <span class="nav-text">kill</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#killall"><span class="nav-number">11.</span> <span class="nav-text">killall</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fg-bg-jobs-nohup"><span class="nav-number">12.</span> <span class="nav-text">fg&#x2F;bg&#x2F;jobs&#x2F;nohup</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#进程优先级调整"><span class="nav-number">13.</span> <span class="nav-text">进程优先级调整</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

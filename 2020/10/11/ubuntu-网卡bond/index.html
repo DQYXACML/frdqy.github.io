@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="背景生产环境中一台主机会有多个网卡，有时候我们会将两个网卡进行绑定，这样当一块网卡出现故障无法工作时另一个网卡还可以正常工作，可以理解为冗余，此外bond后由于多个网卡绑定到某个IP，能够大幅度提高网络总带宽和容错能力。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ubuntu 网卡bond">
+<meta property="og:url" content="http://yoursite.com/2020/10/11/ubuntu-%E7%BD%91%E5%8D%A1bond/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="背景生产环境中一台主机会有多个网卡，有时候我们会将两个网卡进行绑定，这样当一块网卡出现故障无法工作时另一个网卡还可以正常工作，可以理解为冗余，此外bond后由于多个网卡绑定到某个IP，能够大幅度提高网络总带宽和容错能力。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-10-11T12:59:51.000Z">
+<meta property="article:modified_time" content="2020-10-17T05:08:23.390Z">
+<meta property="article:author" content="Frdqy">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/10/11/ubuntu-%E7%BD%91%E5%8D%A1bond/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>ubuntu 网卡bond | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/10/11/ubuntu-%E7%BD%91%E5%8D%A1bond/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ubuntu 网卡bond
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-10-11 20:59:51" itemprop="dateCreated datePublished" datetime="2020-10-11T20:59:51+08:00">2020-10-11</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-10-17 13:08:23" itemprop="dateModified" datetime="2020-10-17T13:08:23+08:00">2020-10-17</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><p>生产环境中一台主机会有多个网卡，有时候我们会将两个网卡进行绑定，这样当一块网卡出现故障无法工作时另一个网卡还可以正常工作，可以理解为冗余，此外bond后由于多个网卡绑定到某个IP，能够大幅度提高网络总带宽和容错能力。</p>
+<a id="more"></a>
+
+
+<h3 id="bond模式"><a href="#bond模式" class="headerlink" title="bond模式"></a>bond模式</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">第⼀种模式：mod&#x3D;0，即：(balance-rr) Round-robin policy（平衡抡循环策略）</span><br><span class="line">特点：传输数据包顺序是依次传输（即：第1个包⾛eth0，下⼀个包就⾛eth1….⼀直循环下去，直到最后⼀个传输完</span><br><span class="line">毕），此模式提供负载平衡和容错能⼒。</span><br><span class="line">第⼆种模式：mod&#x3D;1，即： (active-backup) Active-backup policy（主-备份策略）</span><br><span class="line">特点：只有⼀个设备处于活动状态，当⼀个宕掉另⼀个⻢上由备份转换为主设备。mac地址是外部可⻅得，从外⾯看</span><br><span class="line">来，bond的MAC地址是唯⼀的，以避免switch(交换机)发⽣混乱。此模式只提供了容错能⼒；由此可⻅此算法的优点</span><br><span class="line">是可以提供⾼⽹络连接的可⽤性，但是它的资源利⽤率较低，只有⼀个接⼝处于⼯作状态，在有 N 个⽹络接⼝的情况</span><br><span class="line">下，资源利⽤率为1&#x2F;N。</span><br><span class="line">第三种模式：mod&#x3D;2，即：(balance-xor) XOR policy（平衡策略）</span><br><span class="line">特点：基于指定的传输HASH策略传输数据包。缺省的策略是：(源MAC地址 XOR ⽬标MAC地址) % slave数量。其他</span><br><span class="line">的传输策略可以通过xmit_hash_policy选项指定，此模式提供负载平衡和容错能⼒。</span><br><span class="line">第四种模式：mod&#x3D;3，即：broadcast（⼴播策略）</span><br><span class="line">特点：在每个slave接⼝上传输每个数据包，此模式提供了容错能⼒。</span><br><span class="line">第五种模式：mod&#x3D;4，即：(802.3ad) IEEE 802.3adDynamic link aggregation（IEEE 802.3ad 动态链接</span><br><span class="line">聚合）</span><br><span class="line">特点：创建⼀个聚合组，它们共享同样的速率和双⼯设定。根据802.3ad规范将多个slave⼯作在同⼀个激活的聚合体</span><br><span class="line">下。</span><br><span class="line">必要条件：</span><br><span class="line">条件1：ethtool⽀持获取每个slave的速率和双⼯设定。</span><br><span class="line">条件2：switch(交换机)⽀持IEEE 802.3ad Dynamic link aggregation。</span><br><span class="line">条件3：⼤多数switch(交换机)需要经过特定配置才能⽀持802.3ad模式。</span><br><span class="line">第六种模式：mod&#x3D;5，即：(balance-tlb) Adaptive transmit load balancing（适配器传输负载均衡）</span><br><span class="line">特点：不需要任何特别的switch(交换机)⽀持的通道bonding。在每个slave上根据当前的负载（根据速度计算）分</span><br><span class="line">配外出流量。如果正在接受数据的slave出故障了，另⼀个slave接管失败的slave的MAC地址。</span><br><span class="line">该模式的必要条件：</span><br><span class="line">ethtool⽀持获取每个slave的速率</span><br><span class="line">第七种模式：mod&#x3D;6，即：(balance-alb) Adaptive load balancing（适配器适应性负载均衡）</span><br><span class="line">特点：该模式包含了balance-tlb模式，同时加上针对IPV4流量的接收负载均衡(receive load balance,</span><br><span class="line">rlb)，⽽且不需要任何switch(交换机)的⽀持。</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Ubuntu"><a href="#Ubuntu" class="headerlink" title="Ubuntu"></a>Ubuntu</h3><p>ubuntu 18.04开始使用netplan来管理网络（低于18.04的版本可以通过/etc/network/interfaces来修改ip配置）。在系统安装时会询问是否启动网卡聚合，这里的选项会影响/etc/netplan/50-cloud-init.yaml的配置（该配置是系统安装时创建的）</p>
+<p>对于netplan来说，他是一个抽象的网络配置生成器，他将不同网络工具的差异性屏蔽，即只需要配置yaml文件即可。</p>
+<p>目前支持两种工具：networkManager和systemd-networkd。前者会自动管理所有网络设备，即只要检测到以太网设备就以DHCP模式启动该设备。后者相反，每个需要启动的谁被都需要在/etc/netplan下配置，具体配置如下所示：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># This file is generated from information provided by</span></span><br><span class="line"><span class="comment"># the datasource. Changes to it will not persist across an instance.</span></span><br><span class="line"><span class="comment"># To disablecloud-init's network configuration capabilities, write a file</span></span><br><span class="line"><span class="comment"># /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:</span></span><br><span class="line"><span class="comment"># network: &#123;config: disabled&#125;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 网卡配置</span></span><br><span class="line"><span class="attr">network:</span></span><br><span class="line">	<span class="attr">version:</span> <span class="number">2</span></span><br><span class="line">	<span class="attr">renderer:</span> <span class="string">networkd</span></span><br><span class="line">	<span class="attr">ethernets:</span></span><br><span class="line">		<span class="attr">enp3s0f0:</span></span><br><span class="line">			<span class="attr">addresses:</span> <span class="string">[]</span>	<span class="comment"># 以DHCP自动获取</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">true</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">true</span></span><br><span class="line">		<span class="attr">enp3s0f1:</span></span><br><span class="line">			<span class="attr">addresses:</span> <span class="string">[10.129.104.1/24]</span> <span class="comment"># 固定ip </span></span><br><span class="line">			<span class="attr">gateway4:</span> <span class="number">10.129</span><span class="number">.104</span><span class="number">.1</span>		<span class="comment"># 网关</span></span><br><span class="line">			<span class="attr">nameservers:</span> <span class="string">[8.8.8.8]</span>		<span class="comment"># dns服务器</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="netplan命令"><a href="#netplan命令" class="headerlink" title="netplan命令"></a>netplan命令</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 以/etc/netplan配置为管理工具生成配置</span></span><br><span class="line"><span class="string">netplan</span> <span class="string">generate</span></span><br><span class="line"><span class="comment"># 应用配置生效</span></span><br><span class="line"><span class="string">netplan</span> <span class="string">apply</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="双网卡绑定"><a href="#双网卡绑定" class="headerlink" title="双网卡绑定"></a>双网卡绑定</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sudo vim /etc/netplan/01-netcfg.yaml</span></span><br><span class="line"><span class="comment"># This file describes the network interfaces available on your system</span></span><br><span class="line"><span class="comment"># For more information, see netplan(5).</span></span><br><span class="line"><span class="attr">network:</span></span><br><span class="line">	<span class="attr">version:</span> <span class="number">2</span></span><br><span class="line">	<span class="attr">renderer:</span> <span class="string">networkd</span></span><br><span class="line">	<span class="attr">ethernets:</span></span><br><span class="line">		<span class="attr">eth0:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">		<span class="attr">eth1:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">			</span><br><span class="line">	<span class="attr">bonds:</span></span><br><span class="line">		<span class="attr">bond0:</span></span><br><span class="line">			<span class="attr">interfaces:</span></span><br><span class="line">			<span class="bullet">-</span> <span class="string">eth0</span></span><br><span class="line">			<span class="bullet">-</span> <span class="string">eth1</span></span><br><span class="line">		<span class="attr">addresses:</span> <span class="string">[172.18.3.18/16]</span></span><br><span class="line">		<span class="attr">gateway4:</span> <span class="number">172.18</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">		<span class="attr">nameservers:</span></span><br><span class="line">			<span class="attr">addresses:</span> <span class="string">[223.6.6.6,223.5.5.5]</span></span><br><span class="line">		<span class="attr">parameters:</span></span><br><span class="line">			<span class="attr">mode:</span> <span class="string">active-backup</span></span><br><span class="line">			<span class="attr">mii-monitor-interval:</span> <span class="number">100</span></span><br><span class="line"><span class="comment"># sudo netplan apply</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="双网卡绑定-桥接"><a href="#双网卡绑定-桥接" class="headerlink" title="双网卡绑定+桥接"></a>双网卡绑定+桥接</h4><p>所谓桥接就是模拟出一个新的网卡把原本要配置在真实网卡上的ip地址拿到桥接网卡上，主要用于linux虚拟化。这里的效果就是将eht0和eth1 bond，然后将bond后的网卡当作新的网卡，并且将其绑定到bridge上。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sudo cat /etc/netplan/01-netcfg.yaml</span></span><br><span class="line"><span class="comment"># This file describes the network interfaces available on your system</span></span><br><span class="line"><span class="comment"># For more information, see netplan(5).</span></span><br><span class="line"><span class="attr">network:</span></span><br><span class="line">	<span class="attr">version:</span> <span class="number">2</span></span><br><span class="line">	<span class="attr">renderer:</span> <span class="string">networkd</span></span><br><span class="line">	<span class="attr">ethernets:</span></span><br><span class="line">		<span class="attr">eth0:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">		<span class="attr">eth1:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line"></span><br><span class="line">	<span class="attr">bonds:</span></span><br><span class="line">		<span class="attr">bond0:</span></span><br><span class="line">			<span class="attr">interfaces:</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">eth0</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">eth1</span></span><br><span class="line">			<span class="attr">parameters:</span></span><br><span class="line">				<span class="attr">mode:</span> <span class="string">active-backup</span></span><br><span class="line">				<span class="attr">mii-monitor-interval:</span> <span class="number">100</span></span><br><span class="line">	<span class="attr">bridges:</span></span><br><span class="line">		<span class="attr">br0:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">addresses:</span> <span class="string">[172.18.3.18/16]</span></span><br><span class="line">			<span class="attr">gateway4:</span> <span class="number">172.18</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">			<span class="attr">nameservers:</span></span><br><span class="line">				<span class="attr">addresses:</span> <span class="string">[223.6.6.6,223.5.5.5]</span></span><br><span class="line">			<span class="attr">interfaces:</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">bond0</span></span><br><span class="line"><span class="comment">#reboot</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="多网卡绑定"><a href="#多网卡绑定" class="headerlink" title="多网卡绑定"></a>多网卡绑定</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">~#</span> <span class="string">sudo</span> <span class="string">cat</span> <span class="string">/etc/netplan/01-netcfg.yaml</span></span><br><span class="line"><span class="comment"># This file describes the network interfaces available on your system</span></span><br><span class="line"><span class="comment"># For more information, see netplan(5).</span></span><br><span class="line"><span class="attr">network:</span></span><br><span class="line">	<span class="attr">version:</span> <span class="number">2</span></span><br><span class="line">	<span class="attr">renderer:</span> <span class="string">networkd</span></span><br><span class="line">	<span class="attr">ethernets:</span></span><br><span class="line">		<span class="attr">eth0:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">		<span class="attr">eth1:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">		<span class="attr">eth2:</span>	</span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">		<span class="attr">eth3:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">	<span class="attr">bonds:</span></span><br><span class="line">		<span class="attr">bond0:</span></span><br><span class="line">			<span class="attr">interfaces:</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">eth0</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">eth1</span></span><br><span class="line">			<span class="attr">addresses:</span> <span class="string">[172.18.3.18/16]</span></span><br><span class="line">			<span class="attr">gateway4:</span> <span class="number">172.18</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">			<span class="attr">nameservers:</span></span><br><span class="line">				<span class="attr">addresses:</span> <span class="string">[223.6.6.6,223.5.5.5]</span></span><br><span class="line">			<span class="attr">parameters:</span></span><br><span class="line">				<span class="attr">mode:</span> <span class="string">active-backup</span></span><br><span class="line">				<span class="attr">mii-monitor-interval:</span> <span class="number">100</span></span><br><span class="line">		<span class="attr">bond1:</span></span><br><span class="line">			<span class="attr">interfaces:</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">eth2</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">eth3</span></span><br><span class="line">			<span class="attr">addresses:</span> <span class="string">[10.20.3.18/16]</span></span><br><span class="line">			<span class="attr">parameters:</span></span><br><span class="line">				<span class="attr">mode:</span> <span class="string">active-backup</span></span><br><span class="line">				<span class="attr">mii-monitor-interval:</span> <span class="number">100</span></span><br><span class="line">			<span class="attr">routes:</span></span><br><span class="line">				<span class="bullet">-</span> <span class="attr">to:</span> <span class="number">172.20</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br><span class="line">				<span class="attr">via:</span> <span class="number">10.20</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">				<span class="bullet">-</span> <span class="attr">to:</span> <span class="number">10.20</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br><span class="line">				<span class="attr">via:</span> <span class="number">10.20</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">				<span class="bullet">-</span> <span class="attr">to:</span> <span class="number">10.2</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br><span class="line">				<span class="attr">via:</span> <span class="number">10.20</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">				<span class="bullet">-</span> <span class="attr">to:</span> <span class="number">10.8</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br><span class="line">				<span class="attr">via:</span> <span class="number">10.20</span><span class="number">.0</span><span class="number">.1</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="多网卡绑定-桥接"><a href="#多网卡绑定-桥接" class="headerlink" title="多网卡绑定+桥接"></a>多网卡绑定+桥接</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sudo cat /etc/netplan/01-netcfg.yaml</span></span><br><span class="line"><span class="comment"># This file describes the network interfaces available on your system</span></span><br><span class="line"><span class="comment"># For more information, see netplan(5).</span></span><br><span class="line"><span class="attr">network:</span></span><br><span class="line">	<span class="attr">version:</span> <span class="number">2</span></span><br><span class="line">	<span class="attr">renderer:</span> <span class="string">networkd</span></span><br><span class="line">	<span class="attr">ethernets:</span></span><br><span class="line">		<span class="attr">eth0:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">		<span class="attr">eth1:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">		<span class="attr">eth2:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">		<span class="attr">eth3:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">	<span class="attr">bonds:</span></span><br><span class="line">		<span class="attr">bond0:</span></span><br><span class="line">			<span class="attr">interfaces:</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">eth0</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">eth1</span></span><br><span class="line">			<span class="attr">parameters:</span></span><br><span class="line">				<span class="attr">mode:</span> <span class="string">active-backup</span></span><br><span class="line">				<span class="attr">mii-monitor-interval:</span> <span class="number">100</span></span><br><span class="line">		<span class="attr">bond1:</span></span><br><span class="line">			<span class="attr">interfaces:</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">eth2</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">eth3</span></span><br><span class="line">			<span class="attr">parameters:</span></span><br><span class="line">				<span class="attr">mode:</span> <span class="string">active-backup</span></span><br><span class="line">				<span class="attr">mii-monitor-interval:</span> <span class="number">100</span></span><br><span class="line">	<span class="attr">bridges:</span></span><br><span class="line">		<span class="attr">br0:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">addresses:</span> <span class="string">[172.18.3.18/16]</span></span><br><span class="line">			<span class="attr">gateway4:</span> <span class="number">172.18</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">			<span class="attr">nameservers:</span></span><br><span class="line">				<span class="attr">addresses:</span> <span class="string">[223.6.6.6,223.5.5.5]</span></span><br><span class="line">			<span class="attr">interfaces:</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">bond0</span></span><br><span class="line">		<span class="attr">br1:</span></span><br><span class="line">			<span class="attr">dhcp4:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">dhcp6:</span> <span class="literal">no</span></span><br><span class="line">			<span class="attr">interfaces:</span></span><br><span class="line">				<span class="bullet">-</span> <span class="string">bond1</span></span><br><span class="line">			<span class="attr">addresses:</span> <span class="string">[10.20.3.18/16]</span></span><br><span class="line">			<span class="attr">routes:</span></span><br><span class="line">				<span class="bullet">-</span> <span class="attr">to:</span> <span class="number">172.20</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br><span class="line">				<span class="attr">via:</span> <span class="number">10.20</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">				<span class="bullet">-</span> <span class="attr">to:</span> <span class="number">10.20</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br><span class="line">				<span class="attr">via:</span> <span class="number">10.20</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">				<span class="bullet">-</span> <span class="attr">to:</span> <span class="number">10.2</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br><span class="line">				<span class="attr">via:</span> <span class="number">10.20</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">				<span class="bullet">-</span> <span class="attr">to:</span> <span class="number">10.8</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br><span class="line">				<span class="attr">via:</span> <span class="number">10.20</span><span class="number">.0</span><span class="number">.1</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Centos"><a href="#Centos" class="headerlink" title="Centos"></a>Centos</h3><p>加bonding内核模板</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">modprobe --first-time bonding</span><br><span class="line">lsmod | grep bonding 或者 modinfo bonding</span><br></pre></td></tr></table></figure>
+
+<p>关闭 NetworkManager 服务</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">systemctl stop NetworkManager.service</span><br><span class="line">systemctl disable NetworkManager.service</span><br></pre></td></tr></table></figure>
+
+<p>配置网卡1</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">vim /etc/sysconfig/network-scripts/ifcfg-eno24</span><br><span class="line">TYPE=Ethernet</span><br><span class="line">BOOTPROTO=none</span><br><span class="line">USERCTL=no</span><br><span class="line">DEVICE=eno24</span><br><span class="line">ONBOOT=yes</span><br><span class="line">MASTER=bond0</span><br><span class="line">SLAVE=yes</span><br></pre></td></tr></table></figure>
+
+<p> 配置网卡2</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">vim /etc/sysconfig/network-scripts/ifcfg-eno25</span><br><span class="line">TYPE=Ethernet</span><br><span class="line">BOOTPROTO=none</span><br><span class="line">USERCTL=no</span><br><span class="line">DEVICE=eno25</span><br><span class="line">ONBOOT=ye</span><br><span class="line">sMASTER=bond0</span><br><span class="line">SLAVE=yes</span><br></pre></td></tr></table></figure>
+
+<p>配置bond</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">vim /etc/sysconfig/network-scripts/ifcfg-bond0</span><br><span class="line">TYPE=Bond</span><br><span class="line">BOOTPROTO=none</span><br><span class="line">ONBOOT=yes</span><br><span class="line">USERCTL=no</span><br><span class="line">DEVICE=bond0</span><br><span class="line">IPADDR=192.168.1.4</span><br><span class="line">PREFIX=24</span><br><span class="line">GATEWAY=192.168.1.254</span><br><span class="line">NM_CONTROLLED=no</span><br><span class="line">BONDING_MASTER=yes</span><br></pre></td></tr></table></figure>
+
+<p>配置bonding驱动（不一定需要该操作）</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">vim /etc/modprobe.d/bond.conf</span><br><span class="line">alias bond0 binding</span><br><span class="line">options bond0 miimon=100 mode=1</span><br></pre></td></tr></table></figure>
+
+<p>重启网络服务</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">service network restart</span><br></pre></td></tr></table></figure>
+
+<p>查看bond0生效</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cat /proc/net/bonding/bond0</span><br></pre></td></tr></table></figure>
+
+<p>centos 7默认启动时没有加载bonding模块</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 查看bonding模块详细信息</span></span><br><span class="line">modinfo bonding</span><br><span class="line">filename  /lib/modules/3.10.0-229.el7.x86_64/kernel/drivers/net/bonding/bonding.ko</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 配置系统启动时加载bonding模块</span></span><br><span class="line">vim /etc/sysconfig/modules/bonding.modules </span><br><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line">/sbin/modinfo -F filename bonding &gt; /dev/null 2&gt;&amp;1</span><br><span class="line">if [ $? -eq 0 ];then</span><br><span class="line">    /sbin/modprobe bonding</span><br><span class="line">fi</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 设置执行权限</span></span><br><span class="line">chmod 755 /etc/sysconfig/modules/bonding.modules </span><br><span class="line"><span class="meta">#</span><span class="bash"> 重启查看是否生效</span></span><br><span class="line">reboot</span><br></pre></td></tr></table></figure>
+
+<p>测试</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> down掉一块网卡测试bondip是否正常</span></span><br><span class="line">ifdown ifcfg-eno25</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/09/27/%E5%90%8E%E6%9C%9F%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92%E5%AE%89%E6%8E%92/" rel="prev" title="后期学习计划安排">
+      <i class="fa fa-chevron-left"></i> 后期学习计划安排
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/10/17/%E5%B8%B8%E8%A7%81IO%E6%A8%A1%E5%9E%8B%E5%88%86%E6%9E%90/" rel="next" title="常见IO模型分析">
+      常见IO模型分析 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bond模式"><span class="nav-number">2.</span> <span class="nav-text">bond模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Ubuntu"><span class="nav-number">3.</span> <span class="nav-text">Ubuntu</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#netplan命令"><span class="nav-number">3.1.</span> <span class="nav-text">netplan命令</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#双网卡绑定"><span class="nav-number">3.2.</span> <span class="nav-text">双网卡绑定</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#双网卡绑定-桥接"><span class="nav-number">3.3.</span> <span class="nav-text">双网卡绑定+桥接</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#多网卡绑定"><span class="nav-number">3.4.</span> <span class="nav-text">多网卡绑定</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#多网卡绑定-桥接"><span class="nav-number">3.5.</span> <span class="nav-text">多网卡绑定+桥接</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Centos"><span class="nav-number">4.</span> <span class="nav-text">Centos</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

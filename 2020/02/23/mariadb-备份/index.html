@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="概念完全备份：备份整个数据集合 增量备份：仅备份最近一次完全备份或增量备份以来变化的数据 差异备份：仅备份最近一次完全备份以来变化的数据">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mariadb-备份">
+<meta property="og:url" content="http://yoursite.com/2020/02/23/mariadb-%E5%A4%87%E4%BB%BD/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="概念完全备份：备份整个数据集合 增量备份：仅备份最近一次完全备份或增量备份以来变化的数据 差异备份：仅备份最近一次完全备份以来变化的数据">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-02-23T08:40:51.000Z">
+<meta property="article:modified_time" content="2020-02-23T08:42:26.611Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="mysql">
+<meta property="article:tag" content="mariadb">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/02/23/mariadb-%E5%A4%87%E4%BB%BD/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>mariadb-备份 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/23/mariadb-%E5%A4%87%E4%BB%BD/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          mariadb-备份
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-02-23 16:40:51 / 修改时间：16:42:26" itemprop="dateCreated datePublished" datetime="2020-02-23T16:40:51+08:00">2020-02-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/mariadb/" itemprop="url" rel="index">
+                    <span itemprop="name">mariadb</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p>完全备份：备份整个数据集合</p>
+<p>增量备份：仅备份最近一次完全备份或增量备份以来变化的数据</p>
+<p>差异备份：仅备份最近一次完全备份以来变化的数据</p>
+<a id="more"></a>
+<p>热备份：备份过程中读写操作均可执行</p>
+<p>温备份：读操作可执行，但写操作不能执行</p>
+<p>冷备份：读写操作均不可执行</p>
+<p>物理备份：直接复制数据文件进行备份，还原快，但是占空间大</p>
+<p>逻辑备份：从数据库中“导出”数据另存而进行的备份，即导出sql语句，与存储引擎无关，还原慢但是占空间小</p>
+<h3 id="备份工具"><a href="#备份工具" class="headerlink" title="备份工具"></a>备份工具</h3><p>mysqldump：逻辑备份工具，适用于所有存储引擎，支持温备、完全备份、部分备份；对InnoDB存储引擎支持热备</p>
+<p>cp，tar：物理备份工具，复制归档工具，适用于所有存储引擎，只支持冷备、完全备份、部分备份</p>
+<p>lvm2快照：几乎热备(需要锁拍快照)，借助于文件系统管理工具进行备份</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">FLUSH TABLES WITH READ LOCK;</span><br></pre></td></tr></table></figure>
+
+<p>mysqlhotcopy：几乎冷备，仅适用于MyISAM存储引擎</p>
+<p>xtrabackup：支持InnoDB热备(物理备份)，支持完全备份、增量备份</p>
+<h3 id="逻辑备份"><a href="#逻辑备份" class="headerlink" title="逻辑备份"></a>逻辑备份</h3><p>该备份方式会将schema和数据存储在一起，这样会导致巨大的SQL语句，会形成巨大的单个备份文件。</p>
+<h4 id="mysqldump"><a href="#mysqldump" class="headerlink" title="mysqldump"></a>mysqldump</h4><p>连接至mysql服务器后通过全量扫描进行备份。</p>
+<p>mysqldump备份innodb表时因为要加–single-transaction，会自动将隔离级别设置为repeatable read并开启一个事务，这时mysqldump将获取dump执行前一刻的行版本，并处于一个长事务中直到dump结束。所以不影响目标数据库的使用，可读也可写，即实现的是热备。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#备份数据库下的所有表，不包含数据库自身</span></span><br><span class="line">mysqldump [option] db_name [tbl_name...]</span><br><span class="line"><span class="comment">#备份指定数据库，包含数据库自身和其内的所有表</span></span><br><span class="line">mysqldump [option] --databases db_name...</span><br><span class="line"><span class="comment">#备份所有库，同上</span></span><br><span class="line">mysqldump [option] --all-databases</span><br><span class="line"></span><br><span class="line"><span class="comment">#其他option</span></span><br><span class="line">-E,--events：备份指定数据库相关的所有event schedule</span><br><span class="line">-R,--routines：备份指定数据库相关的所有存储过程和存储函数</span><br><span class="line">--triggers：备份表相关的触发器</span><br></pre></td></tr></table></figure>
+
+<p>对于MyISAM引擎来说，只支持温备；需要锁定备份库后启动备份操作。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#锁定方法</span></span><br><span class="line">-x,--lock-all-tables：锁定所有库的所有表</span><br><span class="line">-l,--lock-tables：锁定指定数据库的所有表</span><br></pre></td></tr></table></figure>
+
+<p>对于InnoDB来说，支持热备，但只支持比较小的数据库备份</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">--single-transaction：启动单个巨大事务来备份</span><br><span class="line">--master-data=2：热备的那个一刻，二进制日志处于的位置，并备份出来用CHANGE MASTER TO语句标记，2是备份时候自动注释掉，恢复时候不被执行；</span><br><span class="line">1：记录为CHANGE MASTER TO语句，此语句不被注释；</span><br><span class="line">2：记录为CHANGE MASTER TO语句，此语句被注释；</span><br><span class="line">--flush-logs：锁定表完成后，即进行日志滚动操作，备份时候，重新生成一个二进制日志文件用于备份恢复；</span><br></pre></td></tr></table></figure>
+
+<h4 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#热备hellodb数据库示例，使用mysqldump+二进制日志完成全量+增量备份</span></span><br><span class="line">mysqldump -uroot -pxxx --single-transaction -R -E --triggers  --master-data=2 --flush-logs  --databases hellodb &gt; /root/hellodb-fullback-$(date +%F).sql</span><br><span class="line"><span class="comment">#热备所有数据库</span></span><br><span class="line">mysqldump -uroot -pxxx --single-transaction -R -E --triggers  --master-data=2 --flush-logs  --all-databases  &gt; /root/alldb-fullback-$(date +%F).sql</span><br><span class="line"><span class="comment">#查看二进制日志位置</span></span><br><span class="line">less /root/alldb-fullback-2018-10-24.sql</span><br><span class="line">.......MASTER_LOG_FILE=<span class="string">'master-log.000001'</span>,MASTER_LOG_POS=245;</span><br><span class="line"><span class="comment">#备份恢复</span></span><br><span class="line">cp alldb-fullback-2018-10-24.sql  /tmp/  <span class="comment">#拷贝备份文件</span></span><br><span class="line">cp master-log.000001 /root  <span class="comment">#拷贝二进制日志文件</span></span><br><span class="line">mysqlbinlog master-log.000001  <span class="comment">#读取二进制日志文件</span></span><br><span class="line">mysqlbinlog master-log.000001 &gt; /tmp/binlog.sql  <span class="comment">#把读的结果重定向到指定目录下</span></span><br><span class="line"><span class="comment">#进入数据库</span></span><br><span class="line">mysql </span><br><span class="line"> SET @@session.sql_log_bin=OFF; <span class="comment">#关闭二进制日志</span></span><br><span class="line">\ ./alldb-fullback-2018-10-24.sql <span class="comment">#读取备份文件恢复数据库</span></span><br><span class="line">\ ./binlog.sql <span class="comment">#读取二进制文件生成的备份文件恢复数据库</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">dump前会滚动二进制日志，这样只需要备份新的二进制日志即可</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="物理备份"><a href="#物理备份" class="headerlink" title="物理备份"></a>物理备份</h3><h4 id="xtrabackup"><a href="#xtrabackup" class="headerlink" title="xtrabackup"></a>xtrabackup</h4><p>待完善</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/mysql/" rel="tag"># mysql</a>
+              <a href="/tags/mariadb/" rel="tag"># mariadb</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/23/mariadb-%E6%97%A5%E5%BF%97/" rel="prev" title="mariadb-日志">
+      <i class="fa fa-chevron-left"></i> mariadb-日志
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/02/23/mariadb-%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/" rel="next" title="mariadb-主从复制">
+      mariadb-主从复制 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#概念"><span class="nav-number">1.</span> <span class="nav-text">概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#备份工具"><span class="nav-number">2.</span> <span class="nav-text">备份工具</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#逻辑备份"><span class="nav-number">3.</span> <span class="nav-text">逻辑备份</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#mysqldump"><span class="nav-number">3.1.</span> <span class="nav-text">mysqldump</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#实例"><span class="nav-number">3.2.</span> <span class="nav-text">实例</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#物理备份"><span class="nav-number">4.</span> <span class="nav-text">物理备份</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#xtrabackup"><span class="nav-number">4.1.</span> <span class="nav-text">xtrabackup</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

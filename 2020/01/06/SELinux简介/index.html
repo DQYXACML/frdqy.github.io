@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="概念增强型的Linux系统。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SELinux简介">
+<meta property="og:url" content="http://yoursite.com/2020/01/06/SELinux%E7%AE%80%E4%BB%8B/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="概念增强型的Linux系统。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-06T13:11:45.000Z">
+<meta property="article:modified_time" content="2020-01-06T13:12:33.201Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="SELinux">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/06/SELinux%E7%AE%80%E4%BB%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>SELinux简介 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/06/SELinux%E7%AE%80%E4%BB%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          SELinux简介
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-06 21:11:45 / 修改时间：21:12:33" itemprop="dateCreated datePublished" datetime="2020-01-06T21:11:45+08:00">2020-01-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p>增强型的Linux系统。</p>
+<a id="more"></a>
+<p>普通的linux使用DAC(自由访问控制)机制来管理用户权限，DAC对进程没有束缚，即进程拥有该进程的发起者的权限，这是很危险的，如果被别人提权，那么别人也就拥有了该用户的权限。</p>
+<p>SELinux采用了MAC(强制访问控制)来解决上述问题。它规定了进程的权限是有限的，即使进程发起者有其他的权限，但是由其启动的进程只有发起时所规定的权限。</p>
+<p>因此，在开启了SELinux的系统中，进程的权限不仅受到属组和属主的限制，还受到MAC的限制，可以理解为类似沙箱的环境，即使进程的发起者拥有访问沙箱外的权限，沙箱内的进程也无法访问沙箱外的空间。</p>
+<h3 id="工作模式"><a href="#工作模式" class="headerlink" title="工作模式"></a>工作模式</h3><h4 id="strict"><a href="#strict" class="headerlink" title="strict"></a>strict</h4><p>每个进程都受到SELinux的控制</p>
+<h4 id="targeted"><a href="#targeted" class="headerlink" title="targeted"></a>targeted</h4><p>仅有限个进程受到SELinux控制</p>
+<h3 id="SELinux状态"><a href="#SELinux状态" class="headerlink" title="SELinux状态"></a>SELinux状态</h3><h4 id="enforcing"><a href="#enforcing" class="headerlink" title="enforcing"></a>enforcing</h4><p>强制，每个受限的进程都必然受限(因为工作模式处于targeted时并不是每个程序都受到限制，因此存在不受限的程序)。</p>
+<h4 id="permissive"><a href="#permissive" class="headerlink" title="permissive"></a>permissive</h4><p>启用，每个受限的进程违规操作不会被禁止，但会被记录到日志中</p>
+<h4 id="disabled"><a href="#disabled" class="headerlink" title="disabled"></a>disabled</h4><p>禁用</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#获取当前SELinux状态</span></span><br><span class="line">getenforce</span><br><span class="line"><span class="comment">#设置当前SELinux状态，仅当前有效</span></span><br><span class="line"><span class="comment">#永久有效需要修改/etc/sysconfig/selinux</span></span><br><span class="line">setenforce 0|1</span><br><span class="line">	0：设置为permissive状态</span><br><span class="line">	1：设置为enforcing状态</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="安全上下文"><a href="#安全上下文" class="headerlink" title="安全上下文"></a>安全上下文</h3><p>SELinux为每个进程提供的安全标签，其标签为user:role:type:sensitivity:category。但是有用的主要是第三段。用于定义不同的权限范围，类似定义不同的沙箱。另外，某一目录下的文件默认拥有该文件的类型，即tmp目录内的文件类型为tmp***等等。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">[root@localhost ~]@ ls -Z</span><br><span class="line">    system_u:object_r:admin_home_t:s0 anaconda-ks.cfg</span><br><span class="line">    system_u:object_r:admin_home_t:s0 anaconda-ks.cfg_bak</span><br><span class="line">unconfined_u:object_r:admin_home_t:s0 anaconda-ks.cfg_symbolic</span><br><span class="line">    system_u:object_r:admin_home_t:s0 initial-setup-ks.cfg</span><br><span class="line">unconfined_u:object_r:admin_home_t:s0 <span class="built_in">test</span></span><br><span class="line">unconfined_u:object_r:admin_home_t:s0 test_symbolic</span><br><span class="line"></span><br><span class="line"><span class="comment">#修改安全上下文</span></span><br><span class="line">chcon [option] file</span><br><span class="line">	-t type_name：修改指定标签</span><br><span class="line">	-R：递归打标签</span><br><span class="line">	</span><br><span class="line"><span class="comment">#还原默认安全上下文</span></span><br><span class="line">restorecon file</span><br><span class="line">	-R：递归还原</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="SELinux规则库"><a href="#SELinux规则库" class="headerlink" title="SELinux规则库"></a>SELinux规则库</h3><p>定义了处于哪些type域的进程可以访问哪些type文件。</p>
+<p>此时访问流程变为：当进程发起文件访问时，首先检查进程的属主和属组是否可以访问，其次检查SELinux规则库内定义的该进程的域是否能够访问该类型的文件(读/写)，若失败则拒绝访问并记录到日志中。</p>
+<h3 id="布尔型规则"><a href="#布尔型规则" class="headerlink" title="布尔型规则"></a>布尔型规则</h3><p>一个程序运行时有多种功能，比如文件上传和下载功能。不同的功能的权限和危险程度也是不同的，因此SELinux可以实现将程序的功能设定为开启或关闭，这就是布尔型规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#显示当前系统的所有SELinux的布尔型状态</span></span><br><span class="line">[root@localhost ~]@ getsebool -a</span><br><span class="line">abrt_anon_write --&gt; off</span><br><span class="line">abrt_handle_event --&gt; off</span><br><span class="line">abrt_upload_watch_anon_write --&gt; on</span><br><span class="line"></span><br><span class="line"><span class="comment">#得到布尔型标签</span></span><br><span class="line">getsebool [option] file</span><br><span class="line">	-a：显示所有</span><br><span class="line"><span class="comment">#设置布尔型标签</span></span><br><span class="line">setsebool [option] file</span><br><span class="line">	-P：写入配置文件中，永久有效</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="日志文件"><a href="#日志文件" class="headerlink" title="日志文件"></a>日志文件</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#注意，并不是所有日志都是文本文件</span></span><br><span class="line">[root@localhost ~]@ ls /var/<span class="built_in">log</span>/audit/audit.log </span><br><span class="line">/var/<span class="built_in">log</span>/audit/audit.log</span><br><span class="line">[root@localhost ~]@ file /var/<span class="built_in">log</span>/audit/audit.log</span><br><span class="line">/var/<span class="built_in">log</span>/audit/audit.log: data</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/SELinux/" rel="tag"># SELinux</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/06/%E5%86%85%E6%A0%B8%E7%AE%A1%E7%90%86/" rel="prev" title="内核管理">
+      <i class="fa fa-chevron-left"></i> 内核管理
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/01/07/%E8%BF%90%E7%BB%B4%E5%AE%89%E5%85%A8%E5%9F%BA%E7%A1%80/" rel="next" title="运维安全基础">
+      运维安全基础 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#概念"><span class="nav-number">1.</span> <span class="nav-text">概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工作模式"><span class="nav-number">2.</span> <span class="nav-text">工作模式</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#strict"><span class="nav-number">2.1.</span> <span class="nav-text">strict</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#targeted"><span class="nav-number">2.2.</span> <span class="nav-text">targeted</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SELinux状态"><span class="nav-number">3.</span> <span class="nav-text">SELinux状态</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#enforcing"><span class="nav-number">3.1.</span> <span class="nav-text">enforcing</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#permissive"><span class="nav-number">3.2.</span> <span class="nav-text">permissive</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#disabled"><span class="nav-number">3.3.</span> <span class="nav-text">disabled</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#安全上下文"><span class="nav-number">4.</span> <span class="nav-text">安全上下文</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SELinux规则库"><span class="nav-number">5.</span> <span class="nav-text">SELinux规则库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#布尔型规则"><span class="nav-number">6.</span> <span class="nav-text">布尔型规则</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#日志文件"><span class="nav-number">7.</span> <span class="nav-text">日志文件</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

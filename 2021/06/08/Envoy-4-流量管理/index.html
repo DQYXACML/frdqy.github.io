@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="流量处理过程 连接管理Envoy通过内置的L4过滤器HTTP连接管理器将原始字节转换为HTTP应用层协议级别的消息和事件，例如接收到的标头和主体等，以及处理所有HTTP连接和请求共有的功能，包括访问日志、生成和跟踪请求ID， 请求&#x2F;响应头处理、路由表管理和统计信息等；">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Envoy-4-流量管理">
+<meta property="og:url" content="http://yoursite.com/2021/06/08/Envoy-4-%E6%B5%81%E9%87%8F%E7%AE%A1%E7%90%86/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="流量处理过程 连接管理Envoy通过内置的L4过滤器HTTP连接管理器将原始字节转换为HTTP应用层协议级别的消息和事件，例如接收到的标头和主体等，以及处理所有HTTP连接和请求共有的功能，包括访问日志、生成和跟踪请求ID， 请求&#x2F;响应头处理、路由表管理和统计信息等；">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/Envoy-4-%E6%B5%81%E9%87%8F%E7%AE%A1%E7%90%86/%E6%B5%81%E5%85%A5%E8%BF%87%E7%A8%8B.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/Envoy-4-%E6%B5%81%E9%87%8F%E7%AE%A1%E7%90%86/%E8%99%9A%E6%8B%9F%E4%B8%BB%E6%9C%BA.png">
+<meta property="article:published_time" content="2021-06-08T14:39:47.000Z">
+<meta property="article:modified_time" content="2021-06-08T14:42:27.990Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="Envoy">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2021/06/08/Envoy-4-%E6%B5%81%E9%87%8F%E7%AE%A1%E7%90%86/%E6%B5%81%E5%85%A5%E8%BF%87%E7%A8%8B.png">
+
+<link rel="canonical" href="http://yoursite.com/2021/06/08/Envoy-4-%E6%B5%81%E9%87%8F%E7%AE%A1%E7%90%86/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Envoy-4-流量管理 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2021/06/08/Envoy-4-%E6%B5%81%E9%87%8F%E7%AE%A1%E7%90%86/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Envoy-4-流量管理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-06-08 22:39:47 / 修改时间：22:42:27" itemprop="dateCreated datePublished" datetime="2021-06-08T22:39:47+08:00">2021-06-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%BE%AE%E6%9C%8D%E5%8A%A1/" itemprop="url" rel="index">
+                    <span itemprop="name">微服务</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="流量处理过程"><a href="#流量处理过程" class="headerlink" title="流量处理过程"></a>流量处理过程</h3><p><img src="/2021/06/08/Envoy-4-%E6%B5%81%E9%87%8F%E7%AE%A1%E7%90%86/%E6%B5%81%E5%85%A5%E8%BF%87%E7%A8%8B.png" alt="流入过程"></p>
+<h3 id="连接管理"><a href="#连接管理" class="headerlink" title="连接管理"></a>连接管理</h3><p>Envoy通过内置的L4过滤器HTTP连接管理器将原始字节转换为HTTP应用层协议级别的消息和事件，例如接收到的标头和主体等，以及处理所有HTTP连接和请求共有的功能，包括访问日志、生成和跟踪请求ID， 请求/响应头处理、路由表管理和统计信息等；</p>
+<a id="more"></a>
+<ul>
+<li>支持HTTP/1.1、WebSockets和HTTP/2，但不支持SPDY</li>
+<li>关联的路由表可静态配置，亦可经由xDS API中的RDS动态生成；</li>
+<li>内建重试插件，可用于配置重试行为（Host Predicates、Priority Predicates）</li>
+<li>内建支持302重定向，它可以捕获302重定向响应，合成新请求后将其发送到新的路由匹配(match)所指定的上游端点，并将收到的响应作为对原始请求的响应返回客户端</li>
+<li>支持适用于HTTP连接及其组成流（constituent streams）的多种可配置超时机制<ul>
+<li>连接级别：空闲超时和排空超时（GOAWAY）；</li>
+<li>流级别：空闲超时、每路由相关的上游端点超时和每路由相关的gRPC最大超时时长；</li>
+</ul>
+</li>
+</ul>
+<h3 id="高级路由"><a href="#高级路由" class="headerlink" title="高级路由"></a>高级路由</h3><p>HTTP协议相关的功能通过各HTTP过滤器实现，这些过滤器大体可分为编码器、解码器和编/解码器三类，其中router （envoy.router）是最常的过滤器之一，它基于路由表完成请求的转发或重定向，以及处理重试操作和生成统计信息等。</p>
+<p>Envoy基于HTTP router过滤器基于路由表完成多种高级路由机制，例如</p>
+<ul>
+<li>将域名映射到虚拟主机；</li>
+<li>path的前缀(prefix)匹配、精确匹配或正则表达式匹配；</li>
+<li>虚拟主机级别的TLS重定向；</li>
+<li>path级别的path/host重定向；</li>
+<li>由Envoy直接生成响应报文；</li>
+<li>显式host rewrite；</li>
+<li>prefix rewrite；</li>
+<li>基于HTTP标头或路由配置的请求重试与请求超时；</li>
+<li>基于运行时参数的流量迁移；</li>
+<li>基于权重或百分比的跨集群流量分割；</li>
+<li>基于任意标头匹配路由规则；</li>
+<li>基于优先级的路由；</li>
+<li>基于hash策略的路由</li>
+</ul>
+<h3 id="虚拟主机"><a href="#虚拟主机" class="headerlink" title="虚拟主机"></a>虚拟主机</h3><p>路由配置中的顶级元素是虚拟主机，每个虚拟主机都有一个逻辑名称以及一组域名，请求报文中的主机头将根据此处的域名进行路由；单个侦听器可以服务于多个顶级域。基于域名选择虚拟主机后，将基于配置的路由机制完成请求路由或进行重定向；</p>
+<h4 id="工作流程"><a href="#工作流程" class="headerlink" title="工作流程"></a>工作流程</h4><p>Envoy匹配Http路由时，它基于如下工作过程进行</p>
+<ul>
+<li>检测HTTP请求的host标头或:authority，并将其同路由配置中定义的虚拟主机作匹配检查；</li>
+<li>在匹配到的虚拟主机配置中按顺序检查虚拟主机中的每个路由条目中的匹配条件，直到第一个匹配的为止（短路）；</li>
+<li>如果定义了虚拟集群，按顺序检查虚拟主机中的每个虚拟集群，直到第一个匹配的为止；</li>
+</ul>
+<p><img src="/2021/06/08/Envoy-4-%E6%B5%81%E9%87%8F%E7%AE%A1%E7%90%86/%E8%99%9A%E6%8B%9F%E4%B8%BB%E6%9C%BA.png" alt="虚拟主机"></p>
+<h4 id="域名匹配顺序"><a href="#域名匹配顺序" class="headerlink" title="域名匹配顺序"></a>域名匹配顺序</h4><p>将请求报文中的host标头值依次与路由表中定义的各Virtualhost的domain属性值进行比较 ，并于第一次匹配时终止搜索；</p>
+<p>精确匹配 &gt; 前缀匹配 &gt; 后缀匹配 &gt; *</p>
+<h4 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 虚拟主机级别可配置信息</span></span><br><span class="line"><span class="string">&#123;</span></span><br><span class="line">	<span class="attr">"name":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"domains":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"routes":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"require_tls":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"virtual_clusters":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"rate_limits":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"request_headers_to_add":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"request_headers_to_remove":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"response_headers_to_add":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"response_headers_to_remove":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"cors":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"per_filter_config":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"typed_per_filter_config":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"include_request_attempt_count":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"retry_policy":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"hedge_policy":</span> <span class="string">"&#123;...&#125;"</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置示例</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">listeners:</span> </span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> </span><br><span class="line">  <span class="attr">address:</span> <span class="string">&#123;...&#125;</span></span><br><span class="line">  <span class="attr">filter_chians:</span> <span class="string">[]</span> </span><br><span class="line">  <span class="bullet">-</span> <span class="attr">filters:</span> </span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">envoy.http_connection_manager</span> </span><br><span class="line">      <span class="attr">config:</span> </span><br><span class="line">        <span class="string">...</span> </span><br><span class="line">        <span class="attr">route_config:</span> </span><br><span class="line">          <span class="attr">name:</span> <span class="string">...</span> </span><br><span class="line">          <span class="attr">virutal_hosts:</span> <span class="string">[]</span> </span><br><span class="line">          <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">...</span> </span><br><span class="line">            <span class="attr">domains:</span> <span class="string">[]</span> <span class="comment"># 虚拟主机的域名，路由匹配时将请求报文中的host标头值与此处列表项进行匹配检测；</span></span><br><span class="line">			<span class="attr">routes:</span> <span class="string">[]</span> <span class="comment"># 路由条目，匹配到当前虚拟主机的请求中的path匹配检测将针对各route中由match定义条件进行；</span></span><br><span class="line">			  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">...</span> </span><br><span class="line">			    <span class="attr">match:</span> <span class="string">&#123;...&#125;</span></span><br><span class="line">				  <span class="string">prefix|path|regex:</span> <span class="string">...</span> <span class="comment"># 基于路径前缀、路径或正则表达式三者之一定义匹配条件；</span></span><br><span class="line">				<span class="attr">route:</span> <span class="string">&#123;...&#125;</span></span><br><span class="line">				  <span class="string">cluster|cluster_header|weighted_cluster:</span> <span class="string">...</span> <span class="comment"># 基于集群、请求报文中的集群标头或加权集群（流量分割）定义路由目标；</span></span><br><span class="line">			  <span class="attr">virtual_clusters:</span> <span class="string">[]</span> <span class="comment"># 为此虚拟主机定义的用于收集统计信息的虚拟集群列表；</span></span><br><span class="line">			  <span class="string">...</span></span><br><span class="line">			<span class="string">...</span></span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Envoy/" rel="tag"># Envoy</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/06/08/Envoy-3-cluster/" rel="prev" title="Envoy-3-cluster">
+      <i class="fa fa-chevron-left"></i> Envoy-3-cluster
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/06/08/ELK/" rel="next" title="ELK">
+      ELK <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#流量处理过程"><span class="nav-number">1.</span> <span class="nav-text">流量处理过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#连接管理"><span class="nav-number">2.</span> <span class="nav-text">连接管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#高级路由"><span class="nav-number">3.</span> <span class="nav-text">高级路由</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#虚拟主机"><span class="nav-number">4.</span> <span class="nav-text">虚拟主机</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#工作流程"><span class="nav-number">4.1.</span> <span class="nav-text">工作流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#域名匹配顺序"><span class="nav-number">4.2.</span> <span class="nav-text">域名匹配顺序</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置"><span class="nav-number">4.3.</span> <span class="nav-text">配置</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

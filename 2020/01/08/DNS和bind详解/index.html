@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="概念Domain name service，基于C&#x2F;S架构，使用udp53端口与tcp53端口，其中udp实现解析，tcp实现区域传送。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DNS和bind详解">
+<meta property="og:url" content="http://yoursite.com/2020/01/08/DNS%E5%92%8Cbind%E8%AF%A6%E8%A7%A3/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="概念Domain name service，基于C&#x2F;S架构，使用udp53端口与tcp53端口，其中udp实现解析，tcp实现区域传送。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-08T12:46:38.000Z">
+<meta property="article:modified_time" content="2020-02-16T04:26:35.354Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="dns">
+<meta property="article:tag" content="bind">
+<meta property="article:tag" content="dig">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/01/08/DNS%E5%92%8Cbind%E8%AF%A6%E8%A7%A3/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>DNS和bind详解 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/08/DNS%E5%92%8Cbind%E8%AF%A6%E8%A7%A3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          DNS和bind详解
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-01-08 20:46:38" itemprop="dateCreated datePublished" datetime="2020-01-08T20:46:38+08:00">2020-01-08</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-16 12:26:35" itemprop="dateModified" datetime="2020-02-16T12:26:35+08:00">2020-02-16</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p>Domain name service，基于C/S架构，使用udp53端口与tcp53端口，其中udp实现解析，tcp实现区域传送。</p>
+<a id="more"></a>
+<p>网址：FQDN(Full Qualified Domain Name)</p>
+<p>顶级域名：.com、.net、.org、.gov、.edu、mail</p>
+<p>国家或地区域：.lq、.tw、.cn、.hk等</p>
+<p>二级域：自己定义的独一无二的字符串</p>
+<p>hosts文件：dns解析时首先匹配本地的这个文件，如果有条目匹配则直接访问。</p>
+<p>dns缓存：本地内存中缓存了最近的名称解析结果，但是结果有效性有期限，这个期限由服务器提供。</p>
+<h3 id="查询类型"><a href="#查询类型" class="headerlink" title="查询类型"></a>查询类型</h3><p>递归：本地主机向本地DNS服务器查询是递归</p>
+<p>迭代：本地DNS服务器向根查询是迭代</p>
+<h3 id="解析类型"><a href="#解析类型" class="headerlink" title="解析类型"></a>解析类型</h3><p>名称-&gt;IP叫做正向解析</p>
+<p>IP-&gt;名称叫做反向解析</p>
+<p>注意：二者的名称空间不同，即解析不是遵循同一颗树。</p>
+<p>正向解析时，例如解析<a href="http://www.frdqy.top，解析树的根为“.”，其次为top，然后是frdqy，最后为www。" target="_blank" rel="noopener">www.frdqy.top，解析树的根为“.”，其次为top，然后是frdqy，最后为www。</a></p>
+<p>反向解析时，例如解析1.2.3.4时，解析树的根为“in-addr.arpa”，其次为1，然后是2，依次往下。可见ip地址与访问的ip地址在解析树中是相反的。</p>
+<h3 id="DNS服务器"><a href="#DNS服务器" class="headerlink" title="DNS服务器"></a>DNS服务器</h3><p>负责解析至少一个域：主DNS服务器、副DNS服务器(用于主服务器挂了顶上去)</p>
+<p>不负责域解析：缓存DNS服务器</p>
+<h4 id="主DNS服务器"><a href="#主DNS服务器" class="headerlink" title="主DNS服务器"></a>主DNS服务器</h4><p>维护所负责解析的域数据库的服务器，读写操作都可以进行。</p>
+<h4 id="从DNS服务器"><a href="#从DNS服务器" class="headerlink" title="从DNS服务器"></a>从DNS服务器</h4><p>从主服务器那或其他从DNS服务器那同步一份数据库，但只能进行读操作。</p>
+<h4 id="主从同步配置"><a href="#主从同步配置" class="headerlink" title="主从同步配置"></a>主从同步配置</h4><p>序列号：数据库的版本号，主服务器数据库内容发生变化时，其版本号递增</p>
+<p>刷新时间间隔：从服务器每隔多久到主服务器检查序列号更新状况</p>
+<p>重试时间间隔：从服务器请求同步失败时再次发起同步请求的时间间隔</p>
+<p>过期时长：从服务器联系不到主服务器时，多久后放弃同步数据，并本身停止服务</p>
+<p>注意：主服务器数据发生改变时要主动通知从服务器进行更新，不需要等待刷新间隔</p>
+<h3 id="区域数据库文件"><a href="#区域数据库文件" class="headerlink" title="区域数据库文件"></a>区域数据库文件</h3><h4 id="资源记录"><a href="#资源记录" class="headerlink" title="资源记录"></a>资源记录</h4><p>记录类型：A、AAAA、PTR、SOA、NS、CNAME、MX等</p>
+<p>SOA：起始授权记录，一个区域解析库只能有一个SOA记录，且必须放在第一条</p>
+<p>NS：域名服务记录，一个区域解析库可以有多个NS记录，其中一个为主。</p>
+<p>A：地址记录，用于主机名到IPV4地址的映射</p>
+<p>AAAA：地址记录，用于主机名到IPV6地址的映射</p>
+<p>CNAME：别名记录</p>
+<p>PTR：实现反向解析，即IP到主机名的映射</p>
+<p>MX：邮件交换器，可以有多个</p>
+<h4 id="定义格式"><a href="#定义格式" class="headerlink" title="定义格式"></a>定义格式</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#IN是关键字，RR_TYPE是资源类型，VALUE是资源的值</span></span><br><span class="line"><span class="comment">#name是指转换名称，例如正向解析就是主机名是名称，反向解析ip是名称</span></span><br><span class="line">语法：name [ttl] IN RR_TYPE VALUE</span><br><span class="line"></span><br><span class="line"><span class="comment">#一个区域只能有一个SOA，且必须放在第一位</span></span><br><span class="line">SOA：</span><br><span class="line">	name：当前区域的名字，正向是地址，反向是ip</span><br><span class="line">	value：有多部份组成：</span><br><span class="line">		当前区域的区域名称(也可以使用主DNS服务器名称)</span><br><span class="line">		当前区域管理员的邮箱地址；不能使用@符号，用.替代</span><br><span class="line">		主从服务协调属性定义及否定答案的ttl</span><br><span class="line">	举例：</span><br><span class="line">		www.frdqy.top	86400	IN	SOA	www.frdqy.top	admin.frdqy.top(</span><br><span class="line">			01;serial</span><br><span class="line">			2H;refresh</span><br><span class="line">			10M;retry</span><br><span class="line">			1W;expire</span><br><span class="line">			1D;negative answer ttl</span><br><span class="line">			)</span><br><span class="line">		</span><br><span class="line"><span class="comment">#一个区域可以有多个NS记录</span></span><br><span class="line">NS：</span><br><span class="line">	name：当前区域的名字</span><br><span class="line">	value：当前区域某DNS服务器的名字</span><br><span class="line">	举例：</span><br><span class="line">		www.frdqy.top	86400	IN	NS	ns1.frdqy.top</span><br><span class="line">		www.frdqy.top	86400	IN	NS	ns2.frdqy.top</span><br><span class="line"></span><br><span class="line"><span class="comment">#可以有多个，名称后加数字，越小优先级越大</span></span><br><span class="line"><span class="comment">#要多指明一个优先级</span></span><br><span class="line">MX：</span><br><span class="line">	name：当前服务器的区域名称</span><br><span class="line">	value：当前区域邮件交换器的主机名</span><br><span class="line">	举例：</span><br><span class="line">		www.frdqy.top	IN	MX	10	mx1.frdqy.top</span><br><span class="line">		www.frdqy.top	IN	MX	20	mx2.frdqy.top</span><br><span class="line">	</span><br><span class="line"><span class="comment">#可以有多个。同一个主机可以有多个ip，同一个ip可以有多台主机</span></span><br><span class="line">A：</span><br><span class="line">	name：某主机名</span><br><span class="line">	value：某IPV4地址</span><br><span class="line">	举例：</span><br><span class="line">		www.frdqy.top	IN	A	1.2.3.4</span><br><span class="line">		www.frdqy.top	IN	A	1.2.2.4</span><br><span class="line">		web.frdqy.top	IN	A	1.2.3.4</span><br><span class="line">		</span><br><span class="line"><span class="comment">#同上，用于IPV6地址</span></span><br><span class="line">AAAA：</span><br><span class="line">	name：某主机名</span><br><span class="line">	value：某IPV6地址</span><br><span class="line">	</span><br><span class="line"><span class="comment">#反向解析</span></span><br><span class="line"><span class="comment">#注意ip地址特殊格式，ip要反过来写且加特定后缀</span></span><br><span class="line"><span class="comment">#例如1.2.3.4的记录应写成4.3.2.1.in-addr.arpa.</span></span><br><span class="line">PTR：</span><br><span class="line">	name：ip地址</span><br><span class="line">	value：主机名</span><br><span class="line">	举例：</span><br><span class="line">		4.3.2.1.in-addr.arpa.	IN	PTR	www.frdqy.top</span><br><span class="line">		</span><br><span class="line"><span class="comment">#别名</span></span><br><span class="line">CNAME：</span><br><span class="line">	name：主机名别名</span><br><span class="line">	value：主机名的正式名称</span><br><span class="line">	举例：</span><br><span class="line">		web.frdqy.top	IN	CNAME	www.frdqy.top</span><br><span class="line">		</span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">TTL可以从全局继承</span><br><span class="line">@可以表示当前区域的名称</span><br><span class="line">相邻的两条记录其name相同时，后面的name可以省略</span><br><span class="line">MX、NS等类型记录的VALUE为主机名，此主机名后应该有一个A记录</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="完整查询流程"><a href="#完整查询流程" class="headerlink" title="完整查询流程"></a>完整查询流程</h3><p>首先客户端根据输入的网址在本地文件hosts中查询是否有对应条目，如果有则直接访问。否则查询本地DNS缓存，如果缓存中有则直接访问。否则查询DNS服务器，DNS服务器拿到地址判断是否是自己的域，如果是则查询本地数据库将结果返回。否则在DNS服务器的本地缓存冲查询，如果有也将其返回。否则以迭代的方式向根、顶级域依次查询，最终将查询结果返回。</p>
+<p>注意：由直接负责的DNS服务器返回的结果是权威结果，而由DNS服务器的缓存返回的结果是不权威结果。</p>
+<h3 id="BIND"><a href="#BIND" class="headerlink" title="BIND"></a>BIND</h3><p>bind是dns协议的一种实现，它的守护进程名为named。bind安装完成后，默认即可做缓存名称服务器使用，即可以被别的主机指向来向根查询解析库结果。如果没有专门负责解析的区域可以直接启动服务。</p>
+<h4 id="程序"><a href="#程序" class="headerlink" title="程序"></a>程序</h4><p>rndc：远程控制器，监听953/tcp端口，但是一般默认监听于本地127.0.0.1地址，仅允许本地使用</p>
+<p>bind-libs：被bind和bind-utils包中的程序共同用到的库文件</p>
+<p>bind-utils：bind客户端程序集，如dig，host</p>
+<p>bind：提供dns server程序、几个常用的测试程序</p>
+<p>bind-chroot：选装，让named运行于jail模式下，解决安全问题</p>
+<h4 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h4><h5 id="主配置文件"><a href="#主配置文件" class="headerlink" title="主配置文件"></a>主配置文件</h5><p>保存在/etc/named.conf，它包含其他文件/etc/named.rfc1912.zones、/etc/named.root.key</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#named.conf</span></span><br><span class="line"><span class="comment">#注意默认全局监听在127.0.0.1上，需要手动改成可与外界通信的地址，或者直接去掉地址表示本机所有地址。</span></span><br><span class="line"><span class="comment">#每条语句必须以分号结尾</span></span><br><span class="line"><span class="comment">#dnssec默认开启，可能会影响解析过程，需要手动设置no(学习时)</span></span><br><span class="line"><span class="comment">#named-check命令可以帮助检查配置文件是否有语法错误</span></span><br><span class="line">[root@localhost named]<span class="comment"># named-check</span></span><br><span class="line">named-checkconf  named-checkzone</span><br><span class="line">全局配置段</span><br><span class="line">options</span><br><span class="line">日志配置段</span><br><span class="line">logging</span><br><span class="line">区域配置段</span><br><span class="line">zone</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="解析库文件"><a href="#解析库文件" class="headerlink" title="解析库文件"></a>解析库文件</h5><p>/var/named目录下，一般名字为ZONE_NAME.zone</p>
+<p>注意：一台服务器可为多个服务器提供解析、必须要有根区域解析库文件(named.ca)、还应该有两个区域解析库文件：localhost和127.0.0.1的正反向解析(正向为named.localhost，反向为named.loopback)</p>
+<h4 id="测试工具"><a href="#测试工具" class="headerlink" title="测试工具"></a>测试工具</h4><h5 id="dig"><a href="#dig" class="headerlink" title="dig"></a>dig</h5><p>用于测试DNS服务，不使用本地hosts文件</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">dig [option] name [@SERVER] [query options]</span><br><span class="line">	-t RR_TYPE：指明记录类型</span><br><span class="line">	@SERVER：通过服务器检测</span><br><span class="line">	[query option]</span><br><span class="line">		+[no]trace：跟踪解析过程</span><br><span class="line">		+[no]recurse：进行递归解析</span><br><span class="line">	</span><br><span class="line"><span class="comment">#正向解析</span></span><br><span class="line">dig -t A www.baidu.com</span><br><span class="line"><span class="comment">#反向解析</span></span><br><span class="line">dig -x 185.199.109.153</span><br><span class="line"><span class="comment">#手动区域传送</span></span><br><span class="line">dig -t axfr DOMAIN [@SERVER]</span><br></pre></td></tr></table></figure>
+
+<h5 id="host"><a href="#host" class="headerlink" title="host"></a>host</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">host [option] name [@SERVER]</span><br><span class="line">	-t RR_TYPE：指明记录类型</span><br><span class="line">	@SERVER：使用指定服务器测试</span><br></pre></td></tr></table></figure>
+
+<h5 id="nslookup"><a href="#nslookup" class="headerlink" title="nslookup"></a>nslookup</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">nslookup [option] [name] [server]</span><br><span class="line"><span class="comment">#交互模式</span></span><br><span class="line">nslookup</span><br><span class="line">&gt;server IP：以指定的IP为DNS服务器进行查询</span><br><span class="line">&gt;<span class="built_in">set</span> q=RR_TYPE：要查询的资源记录类型</span><br><span class="line">&gt;name：要查询的名称</span><br></pre></td></tr></table></figure>
+
+<h5 id="rndc"><a href="#rndc" class="headerlink" title="rndc"></a>rndc</h5><p>named服务控制命令</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#查看日志</span></span><br><span class="line">rndc status</span><br><span class="line"><span class="comment">#刷新缓存</span></span><br><span class="line">rndc flush</span><br><span class="line"><span class="comment">#重载配置文件或指定的zone</span></span><br><span class="line">rndc reload [zone]</span><br></pre></td></tr></table></figure>
+
+<h4 id="配置正向解析"><a href="#配置正向解析" class="headerlink" title="配置正向解析"></a>配置正向解析</h4><p>以frdqy.top为例</p>
+<h5 id="定义区域"><a href="#定义区域" class="headerlink" title="定义区域"></a>定义区域</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#在主配置文件中实现/etc/named.conf</span></span><br><span class="line"><span class="comment">#master：主区域；slave：从服务器；hint：根服务器；forward：转发服务器</span></span><br><span class="line"><span class="comment">#file：区域数据文件，默认为相对路径/var/named下</span></span><br><span class="line"><span class="comment">#ZONE_NAME即为域名</span></span><br><span class="line">zone <span class="string">"ZONE_NAME"</span> IN &#123;</span><br><span class="line">	<span class="built_in">type</span> &#123;MASTER|SLAVE|HINT|FORWARD&#125;;</span><br><span class="line">	file <span class="string">"ZONE_NAME.zone"</span>;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">#举例(配置在/etc/named.rfc1912.zones中，它被/etc/named.conf包含)</span></span><br><span class="line"><span class="comment">#区域名为：frdqy.top.</span></span><br><span class="line">zone <span class="string">"frdqy.top"</span> IN &#123;</span><br><span class="line">	<span class="built_in">type</span> master;</span><br><span class="line">	file <span class="string">"frdqy.top.zone"</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="定义区域解析库文件"><a href="#定义区域解析库文件" class="headerlink" title="定义区域解析库文件"></a>定义区域解析库文件</h5><p>在/var/named/目录下建立区域配置文件frdqy.top.zone。注意要修改权限的属组。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#主要配置A记录</span></span><br><span class="line"><span class="comment">#区域名称可以使用@替代，即frdqy.top.可以由@替换</span></span><br><span class="line"><span class="comment">#ORIGIN宏会自动添加在没有完全定义字段名后面</span></span><br><span class="line"><span class="variable">$TTL</span> 3600</span><br><span class="line"><span class="variable">$ORIGIN</span> frdqy.top.</span><br><span class="line">@	IN	SOA	ns1.frdqy.top.	dnsadmin.frdqy.top. (</span><br><span class="line">		2020010801</span><br><span class="line">		1H</span><br><span class="line">		10M</span><br><span class="line">		3D</span><br><span class="line">		1D )</span><br><span class="line">	IN	NS	ns1</span><br><span class="line">	IN	MX	10	mx1</span><br><span class="line">	IN	MX	20	mx2</span><br><span class="line">ns1	IN	A	192.168.163.131</span><br><span class="line">mx1	IN	A	192.168.163.3</span><br><span class="line">mx2	IN	A	192.168.163.4</span><br><span class="line">www	IN	A	192.168.163.2</span><br><span class="line">web	IN	CNAME	www</span><br><span class="line">bbs	IN	A	192.168.163.9</span><br><span class="line">bbs	IN	A	192.168.163.9</span><br><span class="line"></span><br><span class="line"><span class="comment">#修改权限</span></span><br><span class="line">chgrp named /var/named/frdqy.top.zone</span><br><span class="line">chmod o= /var/named/frdqy.top.zone</span><br><span class="line"></span><br><span class="line"><span class="comment">#检查语法错误</span></span><br><span class="line">named-checkconf</span><br><span class="line">named-checkzone frdqy.top. /var/named/frdqy.top.zone</span><br></pre></td></tr></table></figure>
+
+<h5 id="服务器重载"><a href="#服务器重载" class="headerlink" title="服务器重载"></a>服务器重载</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">rndc reload</span><br><span class="line">或</span><br><span class="line">systemctl reload named.service</span><br></pre></td></tr></table></figure>
+
+<h4 id="配置反向解析"><a href="#配置反向解析" class="headerlink" title="配置反向解析"></a>配置反向解析</h4><h5 id="定义区域-1"><a href="#定义区域-1" class="headerlink" title="定义区域"></a>定义区域</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#在主配置文件中实现/etc/named.conf</span></span><br><span class="line"><span class="comment">#master：主区域；slave：从服务器；hint：根服务器；forward：转发服务器</span></span><br><span class="line"><span class="comment">#file：区域数据文件，默认为相对路径/var/named下</span></span><br><span class="line"><span class="comment">#ZONE_NAME为反向区域的名字，即反写的网段地址.in-addr.arpa</span></span><br><span class="line">zone <span class="string">"ZONE_NAME"</span> IN &#123;</span><br><span class="line">	<span class="built_in">type</span> &#123;MASTER|SLAVE|HINT|FORWARD&#125;;</span><br><span class="line">	file <span class="string">"ZONE_NAME.zone"</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">#举例</span></span><br><span class="line">zone <span class="string">"168.192.in-addr.arpa"</span>&#123;</span><br><span class="line">	<span class="built_in">type</span> master;</span><br><span class="line">	file <span class="string">"192.168.zone"</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h5 id="定义区域解析库文件-1"><a href="#定义区域解析库文件-1" class="headerlink" title="定义区域解析库文件"></a>定义区域解析库文件</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#主要配置PTR记录</span></span><br><span class="line"><span class="variable">$TTL</span> 3600</span><br><span class="line"><span class="variable">$ORIGIN</span> 168.192.in-addr.arpa.</span><br><span class="line">@	IN	SOA	ns1.frdqy.top.	dnsadmin.frdqy.top. (</span><br><span class="line">		2020010801</span><br><span class="line">		1H</span><br><span class="line">		10M</span><br><span class="line">		3D</span><br><span class="line">		1D )</span><br><span class="line">		IN	NS	ns1.frdqy.top.</span><br><span class="line">2.163	IN	PTR	ns1.frdqy.top.</span><br><span class="line">3.163	IN	PTR	mx1.frdqy.top.</span><br><span class="line">4.163	IN	PTR	mx2.frdqy.top.</span><br><span class="line"></span><br><span class="line"><span class="comment">#修改权限</span></span><br><span class="line">chgrp named /var/named/192.168.zone</span><br><span class="line">chmod o= /var/named/192.168.zone</span><br><span class="line"></span><br><span class="line"><span class="comment">#检查语法错误</span></span><br><span class="line"><span class="comment">#第一个参数是区域名，和/etc/named.conf中zone定义的一样</span></span><br><span class="line">named-checkzone 168.192.in-addr.arpa /var/named/192.168.zone</span><br><span class="line">named-checkconf</span><br></pre></td></tr></table></figure>
+
+<h5 id="服务器重载-1"><a href="#服务器重载-1" class="headerlink" title="服务器重载"></a>服务器重载</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">rndc reload</span><br><span class="line">或</span><br><span class="line">systemctl reload named.service</span><br></pre></td></tr></table></figure>
+
+<h4 id="主从服务器配置"><a href="#主从服务器配置" class="headerlink" title="主从服务器配置"></a>主从服务器配置</h4><p>从服务器是针对主服务器的某个区域来配置的，即若主服务器有多个区域的解析，从服务器一般只同步一个区域。当然，也可以全部同步。因此，一台服务器既可以当主也可以同时当从(理解主从是针对区域的概念)。并且从服务器可以级联配置，即从服务器可以从另一台从服务器来同步区域数据。</p>
+<h5 id="从"><a href="#从" class="headerlink" title="从"></a>从</h5><h6 id="定义从区域"><a href="#定义从区域" class="headerlink" title="定义从区域"></a>定义从区域</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#type为类型</span></span><br><span class="line"><span class="comment">#file为slaves目录下的解析库文件</span></span><br><span class="line"><span class="comment">#master指明主服务器的ip地址，有多个需要用“;”分离</span></span><br><span class="line"><span class="comment">#不需要写解析文件，直接reload即可同步</span></span><br><span class="line">zone <span class="string">"ZONE_NAME"</span> IN&#123;</span><br><span class="line">	<span class="built_in">type</span> slave;</span><br><span class="line">	file <span class="string">"slaves/ZONE_NAME.zone"</span></span><br><span class="line">	masters &#123; MASTER_IP1;MASTER_IP2; &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">#配置文件语法检查</span></span><br><span class="line">named-checkfoncig</span><br></pre></td></tr></table></figure>
+
+<h6 id="重载配置文件"><a href="#重载配置文件" class="headerlink" title="重载配置文件"></a>重载配置文件</h6><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">rndc reload</span><br><span class="line">或</span><br><span class="line">systemctl reload named.service</span><br></pre></td></tr></table></figure>
+
+<h5 id="主"><a href="#主" class="headerlink" title="主"></a>主</h5><p>确保区域文件中为每个从服务器配置了 NS记录，且正向解析的文件中每个服务器的NS记录都需要配置一个A记录，A记录的地址为真正服务器的地址。然后重载配置文件即可。</p>
+<h4 id="子域授权"><a href="#子域授权" class="headerlink" title="子域授权"></a>子域授权</h4><h5 id="正向解析授权"><a href="#正向解析授权" class="headerlink" title="正向解析授权"></a>正向解析授权</h5><p>在/var/named/区域解析配置中添加一条NS记录以及对应的A记录即可</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#在frdqy.top.域上对ops.frdqy.top子域授权</span></span><br><span class="line">ops.frdqy.top	IN	NS	ns1.ops.frdqy.top</span><br><span class="line">ns1.ops.frdqy.top	IN	A	IP</span><br></pre></td></tr></table></figure>
+
+<h5 id="定义转发域"><a href="#定义转发域" class="headerlink" title="定义转发域"></a>定义转发域</h5><p>转发域分为区域转发和全局转发。被转发服务器必须允许为当前服务做递归。</p>
+<h6 id="区域转发"><a href="#区域转发" class="headerlink" title="区域转发"></a>区域转发</h6><p>仅转发对某特定区域的解析请求</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#first：首先转发，转发器不响应就迭代查询</span></span><br><span class="line"><span class="comment">#only：只转发，不响应则等待</span></span><br><span class="line">zone <span class="string">"ZONE_NAME"</span> IN &#123;</span><br><span class="line">	tyep forward;</span><br><span class="line">	forward &#123; first|only &#125;;</span><br><span class="line">	forwarders &#123; SERVER_IP; &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h6 id="全局转发"><a href="#全局转发" class="headerlink" title="全局转发"></a>全局转发</h6><p>本地没有通过zone定义的区域请求全部转发给/etc/named.conf指定的转发器</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#在/etc/named.conf的option字段中添加</span></span><br><span class="line">option&#123;</span><br><span class="line">	...</span><br><span class="line">	forward &#123;only|first&#125;;</span><br><span class="line">	forwarders &#123;SERVER_IP;&#125;;</span><br><span class="line">	...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h4 id="安全相关设置"><a href="#安全相关设置" class="headerlink" title="安全相关设置"></a>安全相关设置</h4><h5 id="acl"><a href="#acl" class="headerlink" title="acl"></a>acl</h5><p>访问控制链表。把一个或多个地址归并一个命名的集合，随后通过此名称即可对此集合内的所有主机实现统一调用。在配置文件中定义acl后需要配合访问控制指令在zone或者全局配置文件中使用。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#只能放在option之前</span></span><br><span class="line">acl acl_name&#123;</span><br><span class="line">	ip;</span><br><span class="line">	net/prelen;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">#举例，表示整个网络的主机都可以</span></span><br><span class="line">acl myacl&#123;</span><br><span class="line">	192.168.0.0/16;</span><br><span class="line">	127.0.0.0/8;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">#举例，表示主机132受到控制</span></span><br><span class="line">acl slaves&#123;</span><br><span class="line">	192.168.163.132;</span><br><span class="line">	127.0.0.1;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h6 id="内置acl"><a href="#内置acl" class="headerlink" title="内置acl"></a>内置acl</h6><p>none：没有一个主机</p>
+<p>any：任意一个主机</p>
+<p>local：本机</p>
+<p>localnet：本机所在的ip网络</p>
+<h6 id="访问控制指令"><a href="#访问控制指令" class="headerlink" title="访问控制指令"></a>访问控制指令</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">allow-query&#123;&#125;;允许查询的主机</span><br><span class="line">allow-transfer&#123;&#125;;允许向哪些主机做区域传送(应该设置为只向从服务器传送)</span><br><span class="line">allow-recursion&#123;&#125;;允许哪些主机进行递归查询</span><br><span class="line">allow-update&#123;&#125;;允许动态更新区域解析库的文件(一般设置为none，不允许任何更新)</span><br></pre></td></tr></table></figure>
+
+<h4 id="视图"><a href="#视图" class="headerlink" title="视图"></a>视图</h4><p>bind视图即view是主要用来实现智能dns，即实现不同的用户解析到不同的ip上。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#定义</span></span><br><span class="line">view VIEW_NAME&#123;</span><br><span class="line">	match-clients &#123; IP; &#125;;</span><br><span class="line">	zone ZONE_NAEM_1 IN &#123;</span><br><span class="line">    	<span class="built_in">type</span>;</span><br><span class="line">    	file;</span><br><span class="line">	&#125;;</span><br><span class="line">	zone ZONE_NAEM_2 IN &#123;</span><br><span class="line">    	<span class="built_in">type</span>;</span><br><span class="line">    	file;</span><br><span class="line">	&#125;;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">#举例，同一个zone要定义在不同的view实现智能解析</span></span><br><span class="line">view internal &#123;</span><br><span class="line">	match-clients &#123; 192.168.163.0/24; &#125;;</span><br><span class="line">	zone <span class="string">"frdqy.top"</span> IN &#123;</span><br><span class="line">		<span class="built_in">type</span> master;</span><br><span class="line">		file <span class="string">"frdqy.top/internal"</span></span><br><span class="line">	&#125;;   </span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">#all要放在最后，精确匹配的放在前面</span></span><br><span class="line">view external &#123;</span><br><span class="line">	match-clients &#123; all; &#125;;</span><br><span class="line">	zone <span class="string">"frdqy.top"</span> IN &#123;</span><br><span class="line">		<span class="built_in">type</span> master;</span><br><span class="line">		file <span class="string">"frdqy.top/external"</span>;</span><br><span class="line">	&#125;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/dns/" rel="tag"># dns</a>
+              <a href="/tags/bind/" rel="tag"># bind</a>
+              <a href="/tags/dig/" rel="tag"># dig</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/07/%E8%BF%90%E7%BB%B4%E5%AE%89%E5%85%A8%E5%9F%BA%E7%A1%80/" rel="prev" title="运维安全基础">
+      <i class="fa fa-chevron-left"></i> 运维安全基础
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/01/10/http%E8%AF%A6%E8%A7%A3/" rel="next" title="http详解">
+      http详解 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#概念"><span class="nav-number">1.</span> <span class="nav-text">概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查询类型"><span class="nav-number">2.</span> <span class="nav-text">查询类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#解析类型"><span class="nav-number">3.</span> <span class="nav-text">解析类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DNS服务器"><span class="nav-number">4.</span> <span class="nav-text">DNS服务器</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#主DNS服务器"><span class="nav-number">4.1.</span> <span class="nav-text">主DNS服务器</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#从DNS服务器"><span class="nav-number">4.2.</span> <span class="nav-text">从DNS服务器</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#主从同步配置"><span class="nav-number">4.3.</span> <span class="nav-text">主从同步配置</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#区域数据库文件"><span class="nav-number">5.</span> <span class="nav-text">区域数据库文件</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#资源记录"><span class="nav-number">5.1.</span> <span class="nav-text">资源记录</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#定义格式"><span class="nav-number">5.2.</span> <span class="nav-text">定义格式</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#完整查询流程"><span class="nav-number">6.</span> <span class="nav-text">完整查询流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BIND"><span class="nav-number">7.</span> <span class="nav-text">BIND</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#程序"><span class="nav-number">7.1.</span> <span class="nav-text">程序</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置文件"><span class="nav-number">7.2.</span> <span class="nav-text">配置文件</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#主配置文件"><span class="nav-number">7.2.1.</span> <span class="nav-text">主配置文件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#解析库文件"><span class="nav-number">7.2.2.</span> <span class="nav-text">解析库文件</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#测试工具"><span class="nav-number">7.3.</span> <span class="nav-text">测试工具</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#dig"><span class="nav-number">7.3.1.</span> <span class="nav-text">dig</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#host"><span class="nav-number">7.3.2.</span> <span class="nav-text">host</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#nslookup"><span class="nav-number">7.3.3.</span> <span class="nav-text">nslookup</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#rndc"><span class="nav-number">7.3.4.</span> <span class="nav-text">rndc</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置正向解析"><span class="nav-number">7.4.</span> <span class="nav-text">配置正向解析</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#定义区域"><span class="nav-number">7.4.1.</span> <span class="nav-text">定义区域</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#定义区域解析库文件"><span class="nav-number">7.4.2.</span> <span class="nav-text">定义区域解析库文件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#服务器重载"><span class="nav-number">7.4.3.</span> <span class="nav-text">服务器重载</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置反向解析"><span class="nav-number">7.5.</span> <span class="nav-text">配置反向解析</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#定义区域-1"><span class="nav-number">7.5.1.</span> <span class="nav-text">定义区域</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#定义区域解析库文件-1"><span class="nav-number">7.5.2.</span> <span class="nav-text">定义区域解析库文件</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#服务器重载-1"><span class="nav-number">7.5.3.</span> <span class="nav-text">服务器重载</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#主从服务器配置"><span class="nav-number">7.6.</span> <span class="nav-text">主从服务器配置</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#从"><span class="nav-number">7.6.1.</span> <span class="nav-text">从</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#定义从区域"><span class="nav-number">7.6.1.1.</span> <span class="nav-text">定义从区域</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#重载配置文件"><span class="nav-number">7.6.1.2.</span> <span class="nav-text">重载配置文件</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#主"><span class="nav-number">7.6.2.</span> <span class="nav-text">主</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#子域授权"><span class="nav-number">7.7.</span> <span class="nav-text">子域授权</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#正向解析授权"><span class="nav-number">7.7.1.</span> <span class="nav-text">正向解析授权</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#定义转发域"><span class="nav-number">7.7.2.</span> <span class="nav-text">定义转发域</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#区域转发"><span class="nav-number">7.7.2.1.</span> <span class="nav-text">区域转发</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#全局转发"><span class="nav-number">7.7.2.2.</span> <span class="nav-text">全局转发</span></a></li></ol></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#安全相关设置"><span class="nav-number">7.8.</span> <span class="nav-text">安全相关设置</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#acl"><span class="nav-number">7.8.1.</span> <span class="nav-text">acl</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#内置acl"><span class="nav-number">7.8.1.1.</span> <span class="nav-text">内置acl</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#访问控制指令"><span class="nav-number">7.8.1.2.</span> <span class="nav-text">访问控制指令</span></a></li></ol></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#视图"><span class="nav-number">7.9.</span> <span class="nav-text">视图</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

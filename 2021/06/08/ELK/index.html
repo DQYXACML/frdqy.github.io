@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="概念ELK是ElasticSearch、Logstash、kibana的组合。logstash部署在要收集日志的主机上，作为一个logagent，它将数据收集、处理、输出到es中，然后我们通过kibana可以将es的数据显示出来。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ELK">
+<meta property="og:url" content="http://yoursite.com/2021/06/08/ELK/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="概念ELK是ElasticSearch、Logstash、kibana的组合。logstash部署在要收集日志的主机上，作为一个logagent，它将数据收集、处理、输出到es中，然后我们通过kibana可以将es的数据显示出来。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/ELK/%E6%9E%B6%E6%9E%84-%E5%B0%8F%E5%9E%8B-1.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/ELK/%E6%9E%B6%E6%9E%84-%E5%B0%8F%E5%9E%8B-2.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/ELK/%E6%9E%B6%E6%9E%84-%E4%B8%AD%E5%9E%8B-1.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/ELK/%E6%9E%B6%E6%9E%84-%E5%A4%A7%E5%9E%8B.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/ELK/%E5%AE%89%E8%A3%85es-deb.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/ELK/head%E6%8F%92%E4%BB%B6.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/ELK/cerebro-1.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/ELK/cerebro-2.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/ELK/kibana-index-pattern.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/ELK/kibana-discover.png">
+<meta property="article:published_time" content="2021-06-08T14:43:12.000Z">
+<meta property="article:modified_time" content="2021-06-08T14:45:10.769Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="日志">
+<meta property="article:tag" content="ES">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2021/06/08/ELK/%E6%9E%B6%E6%9E%84-%E5%B0%8F%E5%9E%8B-1.png">
+
+<link rel="canonical" href="http://yoursite.com/2021/06/08/ELK/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>ELK | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2021/06/08/ELK/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ELK
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-06-08 22:43:12 / 修改时间：22:45:10" itemprop="dateCreated datePublished" datetime="2021-06-08T22:43:12+08:00">2021-06-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p>ELK是ElasticSearch、Logstash、kibana的组合。logstash部署在要收集日志的主机上，作为一个logagent，它将数据收集、处理、输出到es中，然后我们通过kibana可以将es的数据显示出来。</p>
+<a id="more"></a>
+
+<h4 id="ES"><a href="#ES" class="headerlink" title="ES"></a>ES</h4><h5 id="节点类型"><a href="#节点类型" class="headerlink" title="节点类型"></a>节点类型</h5><p>一个ES集群由多个节点构成，节点有几种身份：</p>
+<p>Master：主节点。<code>node.master = true</code>设置该配置表面该节点参与master的选举（默认true，一般和数据节点分开）。主节点统计各个node节点信息、集群状态、索引的创建和删除、索引的分配、node的关闭</p>
+<p>Slave：从节点。从master同步数据、等待机会成为Master</p>
+<p>Data：数据节点。<code>node.data = true</code>设置该配置时该节点即作为数据节点（默认为true，一般和master节点分开）</p>
+<p>Coordinating：协调节点。<code>node.master = false</code>和<code>node.data = false</code>，两个参数如此配置时，该节点只处理路由请求、索引分发、处理搜索等操作</p>
+<h5 id="集群状态"><a href="#集群状态" class="headerlink" title="集群状态"></a>集群状态</h5><p>Green：表示集群各节点运行正常，而且没有丢失任何数据，各主分片和副本分片都运行正常</p>
+<p>Yellow：表示由于某个节点宕机或者其他情况引起的node节点无法连接、副本分片丢失等场景，但是还没有丢失任何数据</p>
+<p>Red：表示由于某个节点宕机或者其他情况引起的主分片丢失及数据丢失</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 192.168.64.132:9200 为集群某个节点，不需要是master</span></span><br><span class="line">curl http://192.168.64.132:9200/_cluster/health?pretty=true</span><br><span class="line">&#123;</span><br><span class="line">	"cluster_name": "frdqy-es-cluster",			# 集群名称</span><br><span class="line">	"status": "green",							# 集群状态</span><br><span class="line">	"timed_out": false,							# </span><br><span class="line">	"number_of_nodes": 3,						# 集群节点数</span><br><span class="line">	"number_of_data_nodes": 3,					# 集群数据节点数（node.data=true的节点）</span><br><span class="line">	"active_primary_shards": 5,					# 可用的主分片数量</span><br><span class="line">	"active_shards": 10,						# 可用的主分片和副本分片总量</span><br><span class="line">	"relocating_shards": 0,						# 正在迁移的分片数</span><br><span class="line">	"initializing_shards": 0,					# 正在初始化的分片数</span><br><span class="line">	"unassigned_shards": 0,						# 未分配的分片数</span><br><span class="line">	"delayed_unassigned_shards": 0,				# 延时待分配到具体节点上的分片数</span><br><span class="line">	"number_of_pending_tasks": 0,				# 待处理的任务数，指主节点创建索引并分配shards等任务</span><br><span class="line">	"number_of_in_flight_fetch": 0,				# </span><br><span class="line">	"task_max_waiting_in_queue_millis": 0,		# </span><br><span class="line">	"active_shards_percent_as_number": 100		# 可用分片数占总分片的比例</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Logstash"><a href="#Logstash" class="headerlink" title="Logstash"></a>Logstash</h4><p>Logstash是开源的数据收集引擎，可以水平伸缩，而且logstash是整个ELK中拥有最多插件的一个组件，其可以接收来自不同来源的数据并统一输出到指定的且可以是多个不同目的地。插件一般分为input、filter、output（输入、处理、输出）</p>
+<h5 id="数据类型"><a href="#数据类型" class="headerlink" title="数据类型"></a>数据类型</h5><p>string：字符串</p>
+<p>array：数组，可以是单个或者多个字符串值</p>
+<p>hash：键值对，多个键值对用空格分离而不是逗号</p>
+<p>codec：用来表示数据编码。用于input和output段</p>
+<p>number：必须是有效的数值，浮点数或者整数</p>
+<p>boolean：布尔值</p>
+<p>bytes：指定字节单位</p>
+<p>password：字符串</p>
+<p>path：系统路径</p>
+<h5 id="常用插件"><a href="#常用插件" class="headerlink" title="常用插件"></a>常用插件</h5><h6 id="Input"><a href="#Input" class="headerlink" title="Input"></a>Input</h6><p>stdin：标准输入，常用于测试</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">input &#123;</span><br><span class="line">    stdin &#123;</span><br><span class="line">        type &#x3D; &quot;string&quot;</span><br><span class="line">        tags &#x3D; [&quot;add&quot;]</span><br><span class="line">        codec&#x3D;&quot;plain&quot;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>file：文件读取</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">input &#123;</span><br><span class="line">    file &#123;</span><br><span class="line">        path = ["/var/log/*.log","/var/log/message"]     # logstash只支持文件的绝对路径</span><br><span class="line">        type = "system"       			# type记录文件类型，定义的变量为全局变量，其他插件都可以调用，用于标记收集的不同日志，可以用于在output插件里作为判断条件，判断用哪个output插件处理（[type]来引用变量）</span><br><span class="line">        start_position = "beginning"	# 从文件的起始读取文件，默认为end</span><br><span class="line">        start_interval = 1				# 采集间隔，默认为1s</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>redis：从redis中读取</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">input &#123;</span><br><span class="line">    redis &#123;    </span><br><span class="line">        data_type&#x3D;&quot;list&quot;    </span><br><span class="line">        key&#x3D;&quot;logstash-nginx&quot;    </span><br><span class="line">        host&#x3D;&quot;192.168.1.250&quot;    </span><br><span class="line">        port&#x3D;6379    </span><br><span class="line">        db&#x3D;1    </span><br><span class="line">        threads&#x3D;5</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>tcp：网络传输</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">input &#123;</span><br><span class="line">    tcp &#123;</span><br><span class="line">        port &#x3D; 8888               # 定义tcp监听端口</span><br><span class="line">        codec&#x3D;&quot;json&quot;               # 规定传入的数据为json格式，k&#x2F;v结构方便分析</span><br><span class="line">        mode &#x3D; &quot;server&quot;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>syslog：监听在514端口的系统日志信息，会解析成RFC3164格式</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">input &#123;</span><br><span class="line">    syslog &#123;</span><br><span class="line">        port &#x3D; &quot;514&quot;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>beats：接收beats的输入（如filebeats）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">input &#123;</span><br><span class="line">  beats &#123;</span><br><span class="line">    port &#x3D;&gt; &quot;5634&quot;</span><br><span class="line">    codec &#x3D;&gt; &quot;json&quot;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h6 id="Filter"><a href="#Filter" class="headerlink" title="Filter"></a>Filter</h6><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">filter &#123;</span><br><span class="line">  geoip &#123;</span><br><span class="line">    source &#x3D;&gt; &quot;clientip&quot;</span><br><span class="line">    target &#x3D;&gt; &quot;geoip&quot;</span><br><span class="line">    database &#x3D;&gt; &quot;&#x2F;path&#x2F;to&#x2F;file&quot;  # 从maxmind.com下载geoip的mmdb文件</span><br><span class="line">    add_field &#x3D;&gt; [&quot;[geoip][coordinates]&quot;,&quot;%&#123;[geoip][longitude]&#125;&quot;]</span><br><span class="line">    add_field &#x3D;&gt; [&quot;[geoip][coordinates]&quot;,&quot;%&#123;[geoip][latitude]&#125;&quot;]</span><br><span class="line">  &#125;</span><br><span class="line">  mutate &#123;</span><br><span class="line">    convert &#x3D;&gt; [&quot;[geoip][coordinates]&quot;,&quot;float&quot;]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h6 id="Output"><a href="#Output" class="headerlink" title="Output"></a>Output</h6><p>stdout：标准输出，常用于测试</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">output &#123;    stdout &#123;        codec &#x3D; rubydebug        workers &#x3D; 2    &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>file：输出保存为文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">output &#123;    file &#123;        path &#x3D; &quot;&#x2F;path&#x2F;to&#x2F;%&#123;+yyyy&#x2F;MM&#x2F;dd&#x2F;HH&#125;&#x2F;%&#123;host&#125;.log.gz&quot;        message_format &#x3D; &quot;%&#123;message&#125;&quot;        gzip &#x3D; true    &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>elasticsearch：保存进es </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">output &#123;    elasticsearch &#123;        hosts &#x3D;&gt; [&quot;192.168.64.132:9200&quot;]	# 或者cluster &#x3D;&gt; “ClusterName“        index &#x3D;&gt; &quot;logstash-%&#123;type&#125;-%&#123;+YYYY.MM.dd&#125;&quot;	# 索引名，统一格式，方便kibana导入，会将统一类型的日志全部导入这里的type＝input中的type值        document_type &#x3D;&gt; &quot;nginx&quot;        workers &#x3D;&gt; 1					# 启动一个进程        flush_size &#x3D;&gt; 20000				# 攒够20000 条数据一次性发给ES，默认500条        idle_flush_time &#x3D;&gt; 10			# 如果10s内没攒够 20000 条也发一次给ES,默认1s        template_overwrite &#x3D;&gt; true    &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>redis：输出到redis缓存</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">output&#123;    redis &#123;            host&#x3D;&quot;192.168.1.250&quot;        port&#x3D;6379            db&#x3D;1            data_type&#x3D;&quot;list&quot;            key&#x3D;&quot;logstash-nginx&quot;	&#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>tcp：输出到网络</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">output &#123;     tcp &#123;     host &#x3D; &quot;192.168.0.2&quot;      port &#x3D; 8888      codec &#x3D; json_lines	&#125; &#125;</span><br></pre></td></tr></table></figure>
+
+<p>exec：调用命令执行</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">output &#123;	exec &#123;		command &#x3D;&gt; &quot;sendsms.pl \&quot;%&#123;message&#125;\&quot; -t %&#123;user&#125;&quot;	&#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>email：可以输出到邮件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">output &#123;	email &#123;		to &#x3D;&gt; &quot;xxx@xxx.com,yyy@xxx.com&quot;		cc &#x3D;&gt; &quot;other@xxx.com&quot;		via &#x3D;&gt; &quot;smtp&quot;		subject &#x3D;&gt; &quot;Title is %&#123;title&#125;&quot;		options &#x3D;&gt; &#123;			smtpIporHost &#x3D;&gt; &quot;localhost&quot;,			port &#x3D;&gt; 25,			domain &#x3D;&gt; &quot;localhost.localdomain&quot;,			userName &#x3D;&gt; nil,			password &#x3D;&gt; nil,			authenticationType &#x3D;&gt; nil,			starttls &#x3D;&gt; true		&#125;		htmlbody &#x3D;&gt; &quot;&quot;		body &#x3D;&gt; &quot;&quot;		attachments &#x3D;&gt; [&quot;&#x2F;path&#x2F;to&#x2F;filename&quot;]	&#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="sincedb"><a href="#sincedb" class="headerlink" title="sincedb"></a>sincedb</h5><p>logstash重启后也能知道上次收集的日志位置，就是通过sincedb文件来实现的。因此可能出现某次即使设置了start_position，logstash也没有从文件头开始读，就是因为sincedb的原因，这些文件可以手动删掉，下次就会重新开始读取。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 其中该文件记录的第一列为收集文件的inode，最后一列数字为记录位置cat /var/lib/logstash/plugins/inputs/file/.sincedb_f5fdf6ea0ea92860c6a6b2b354bfcbbc659893 0 64768 6450496 1618713930.768811 /var/<span class="built_in">log</span>/syslog<span class="comment"># 在插件中手动指定sincedb_path，可以用作测试sincedb_path =&gt; "/dev/null"</span></span></span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h3 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h3><h4 id="小型架构-1"><a href="#小型架构-1" class="headerlink" title="小型架构-1"></a>小型架构-1</h4><p><img src="/2021/06/08/ELK/%E6%9E%B6%E6%9E%84-%E5%B0%8F%E5%9E%8B-1.png" alt="架构-小型-1"></p>
+<h4 id="小型架构-2"><a href="#小型架构-2" class="headerlink" title="小型架构-2"></a>小型架构-2</h4><p><img src="/2021/06/08/ELK/%E6%9E%B6%E6%9E%84-%E5%B0%8F%E5%9E%8B-2.png" alt="架构-小型-2"></p>
+<h4 id="中型架构"><a href="#中型架构" class="headerlink" title="中型架构"></a>中型架构</h4><p><img src="/2021/06/08/ELK/%E6%9E%B6%E6%9E%84-%E4%B8%AD%E5%9E%8B-1.png" alt="架构-中型-1"></p>
+<h4 id="大型架构"><a href="#大型架构" class="headerlink" title="大型架构"></a>大型架构</h4><p><img src="/2021/06/08/ELK/%E6%9E%B6%E6%9E%84-%E5%A4%A7%E5%9E%8B.png" alt="架构-大型"></p>
+<h3 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h3><h4 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h4><p>192.168.64.132、192.168.64.133、192.168.64.134：三台es主机，每台主机一个系统盘和一个数据盘，在es配置文件中将数据和日志都放到挂载的数据盘中。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 以下需要在3个服务器均执行# 加独立数据盘，做文件系统（ext4为例）mkfs.ext4 /dev/sdb# 挂载磁盘到/data下作为es的数据和日志目录mkdir /datamount /dev/sdb /data# 使用uuid将其写入/etc/fstab（blkid获取uuid值）UUID="2be9d40a-ada5-49ac-a947-350745e96e61" /data ext4 defaults 0 0# 优化# 将内核参数调大一点，在启动时如果报错再相应调整（文件描述符数量等）# 注意limit需要配置es用户的资源限制（默认只有root用户）vim /etc/security/limits.confvim /etc/sysctl.conf# 修改启动文件vim /usr/lib/systemd/system/elasticsearch.serviceLimitNOFILE=1000000LimitNPROC=65535LimitMEMLOCK=infinitysystemctl daemon-reload</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="ES-1"><a href="#ES-1" class="headerlink" title="ES"></a>ES</h4><p><img src="/2021/06/08/ELK/%E5%AE%89%E8%A3%85es-deb.png" alt="image-20201227165718636"></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载指定版本的elk套件（本次使用7.6.1），在清华源下载，根据首字母选择不同的组件https://mirrors.tuna.tsinghua.edu.cn/elasticstack/7.x/apt/pool/main/# 下载的deb文件使用dpkg安装，会创建es用户用来启动essudo dpkg -i elasticsearch-7.6.1-amd64.deb# 根据“配置”段来更新配置文件# 修改/data目录的权限（即数据存放位置的权限）也可以修改elasticserach.serivce启动文件，以root启动，不推荐chown elasticsearch.elasticsearch /data# 启动服务systemctl start elasticsearch# 查看服务状态# 有报错的话可以到log目录下看，文件是集群名称的log文件systemctl status elasticsearch</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="插件"><a href="#插件" class="headerlink" title="插件"></a>插件</h5><h6 id="head"><a href="#head" class="headerlink" title="head"></a>head</h6><p>elasticsearch-head，一个es的web前端插件，可以显示集群信息。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># https://github.com/mobz/elasticsearch-head#running-with-built-in-server# 1.x 2.x 5.x用的多，现在7.x也可以使用，需要手动编译apt updateapt install npmcd /tmpgit clone git://github.com/mobz/elasticsearch-head.gitcd elasticsearch-headnpm installnpm run start &amp;</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/06/08/ELK/head%E6%8F%92%E4%BB%B6.png" alt="image-20201227203124161"></p>
+<h6 id="cerebro"><a href="#cerebro" class="headerlink" title="cerebro"></a>cerebro</h6><p>较新且美观的es前端插件</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># https://github.com/lmenezes/cerebrowget https://github.com/lmenezes/cerebro/releases/download/v0.9.3/cerebro-0.9.3.tgztar xvf cerebro-0.9.3.tgzcd cerebro-0.9.3./bin/cerebro &amp;</span></span><br></pre></td></tr></table></figure>
+
+<p>手动创建索引测试，7.x开始不指定shards的数量的话是默认1个shard。</p>
+<p><img src="/2021/06/08/ELK/cerebro-1.png" alt="image-20201228224929040"></p>
+<p>创建索引后查看集群情况，可以看到主shard和副本shard都是放在不同的节点上。</p>
+<p><img src="/2021/06/08/ELK/cerebro-2.png" alt="image-20201228225249557"></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 在node1上可以看到数据目录的索引目录下有其对应shard号的目录，注意索引目录名称是es hash随机的，老版本是索引名称root@dqy-master1:/data/esdata/nodes/0/indices/Cro2VhwfR-27h-3Pw1YYOw# ls -lrttotal 20drwxr-xr-x 5 elasticsearch elasticsearch 4096 Dec 28 14:50 3drwxr-xr-x 5 elasticsearch elasticsearch 4096 Dec 28 14:50 0drwxr-xr-x 5 elasticsearch elasticsearch 4096 Dec 28 14:50 2drwxr-xr-x 5 elasticsearch elasticsearch 4096 Dec 28 14:50 4drwxr-xr-x 2 elasticsearch elasticsearch 4096 Dec 28 14:50 _stateroot@dqy-master1:/data/esdata/nodes/0/indices/Cro2VhwfR-27h-3Pw1YYOw# pwd/data/esdata/nodes/0/indices/Cro2VhwfR-27h-3Pw1YYOw</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="Logstash-1"><a href="#Logstash-1" class="headerlink" title="Logstash"></a>Logstash</h4><p>logstash的版本与es版本最好一致</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 下载指定版本的elk套件（本次使用7.6.1），在清华源下载，根据首字母选择不同的组件https://mirrors.tuna.tsinghua.edu.cn/elasticstack/7.x/apt/pool/main/dpkg -i logstash-7.6.1.deb<span class="comment"># 可以手动-e选项进行命令行测试/usr/share/logstash/bin/logstash -e ' input &#123; file &#123; path =&gt; ["/var/log/syslog"] start_position =&gt; "beginning" &#125; &#125; output &#123; elasticsearch &#123; hosts =&gt; ["192.168.64.133:9200"] &#125; &#125; '# 以服务的方式启动systemctl start logstashsystemctl status logstash# 启动日志tail -f /var/log/logstash/logstash-*</span></span></span><br></pre></td></tr></table></figure>
+
+<h4 id="Kibana"><a href="#Kibana" class="headerlink" title="Kibana"></a>Kibana</h4><p>kibana版本依旧要与es和logstash保持一致</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 下载指定版本的elk套件（本次使用7.6.1），在清华源下载，根据首字母选择不同的组件https://mirrors.tuna.tsinghua.edu.cn/elasticstack/7.x/apt/pool/main/dpkg -i kibana-7.6.1-amd64.deb<span class="comment"># systemd管理服务systemctl start kibana</span></span></span><br></pre></td></tr></table></figure>
+
+<h4 id="MetricBeat"><a href="#MetricBeat" class="headerlink" title="MetricBeat"></a>MetricBeat</h4><p>主要用于收集主机日志（主要是CPU、内存、网卡流量）。不过用的比较少，一般zabbix可以满足，但是beat可以二开。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget https://artifacts.elastic.co/downloads/beats/metricbeat/metricbeat-7.6.1-amd64.debdpkg -i metricbeat-7.6.1-amd64.deb</span><br></pre></td></tr></table></figure>
+
+<h4 id="FileBeat"><a href="#FileBeat" class="headerlink" title="FileBeat"></a><strong>FileBeat</strong></h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.6.1-amd64.debdpkg -i filebeat-7.6.1-amd64.deb</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h3><h4 id="ES-2"><a href="#ES-2" class="headerlink" title="ES"></a>ES</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 三台服务器的cluster.name必须一致cluster.name: frdqy-es-cluster# node.name每个节点的值不同node.name: node-1# elasticsearch目录不需要提前创建，es会自动创建path.data: /data/elasticsearchpath.logs: /data/elasticsearch# 监听ip以及客户端连接端口network.host: 0.0.0.0http.port: 9200# 启动时发现其他节点的ip列表（自身也要）discovery.seed_hosts: ["192.168.64.132", "192.168.64.133", "192.168.64.134"]# 可以选举为master的节点ip列表cluster.initial_master_nodes: ["192.168.64.132", "192.168.64.133", "192.168.64.134"]# n个节点启动后才允许处理数据，一般为总节点数的一半gateway.recover_after_nodes: 2# 删除索引时必须显示指定索引名称action.destructive_requires_name: true# 一般前端插件需要配置如下两个配置# 表示es允许跨域的http请求http.cors.enabled: true# 指定跨域请求来自何处http.cors.allow-origin: "*"</span></span><br></pre></td></tr></table></figure>
+
+<p>es的jvm配置，在jvm.options中配置。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 修改es运行时占用内存，最大建议32G（或一半物理机内存）# 这个是jvm堆内内存大小，实际使用可能比这个值大，因为es使用堆外缓冲区进行网络通信，以及操作系统内存来访问文件等-Xms1g-Xmxlg</span></span><br></pre></td></tr></table></figure>
+
+<p>index创建机制</p>
+<ul>
+<li>按天创建<ul>
+<li>访问量较大的业务日志，如各种Web服务的访问日志</li>
+</ul>
+</li>
+<li>按周创建<ul>
+<li>网络设备的日志，web服务的错误日志</li>
+</ul>
+</li>
+<li>按月创建<ul>
+<li>系统日志，/var/log/message /var/log/syslog</li>
+</ul>
+</li>
+</ul>
+<h4 id="Logstash-2"><a href="#Logstash-2" class="headerlink" title="Logstash"></a>Logstash</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> logstash的配置文件放在/etc/logstash/conf.d，启动时会加载这个目录下的所有配置文件<span class="comment"># syslog-es.conf 为例input &#123;  file &#123;    path =&gt; ["/var/log/syslog"]		# 注意这里的文件必须是logstash可读的，注意权限    start_position =&gt; "beginning"  &#125;&#125;output &#123;  elasticsearch &#123;    hosts =&gt; ["192.168.64.133:9200"]  &#125;&#125;# 检测配置文件是否有错/usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/syslog-es.conf -t</span></span></span><br></pre></td></tr></table></figure>
+
+<h4 id="MetrciBeat"><a href="#MetrciBeat" class="headerlink" title="MetrciBeat"></a>MetrciBeat</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">setup.kibana:  host:</span> <span class="string">"192.168.64.133:5601"</span>  <span class="attr">output.elasticsearch:  hosts:</span> <span class="string">["192.168.64.132:9200",</span> <span class="string">"192.168.64.133:9200"</span><span class="string">,</span> <span class="string">"192.168.64.134:9200"</span><span class="string">]</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="FileBeat-1"><a href="#FileBeat-1" class="headerlink" title="FileBeat"></a>FileBeat</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">filebeat.inputs:- type:</span> <span class="string">log</span>  <span class="comment"># Change to true to enable this input configuration.  enabled: true  # Paths that should be crawled and fetched. Glob based paths.  paths:    - /var/log/*.log    # 为收集的日志添加字段，用于给logstash的output添加条件  fileds:    type: nginx-error    host: 192.168.64.132# 注意filebeat的输出只能同时有一个# 一般不会直接写到es中，此处用于测试output.elasticsearch:  # Array of hosts to connect to.  hosts: ["192.168.64.132:9200", "192.168.64.133:9200", "192.168.64.134:9200"]  # 也可以写到文件中测试output.file  path: "/tmp"  filename: "filebeat.log"  # 输出到redisoutput.redis:  hosts: [":6379"]  password: "1234"  key: "dqy"  db: 1  timeout: 10  # 输出到logstashoutput.logstash:  hosts: ["192.168.64.132:5044","192.168.64.132:5045"]  loadbalance: true  # 循环输出到两个logstash  worker: 5  # 启动几个工作进程</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="Kibana-1"><a href="#Kibana-1" class="headerlink" title="Kibana"></a>Kibana</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">server.port:</span> <span class="number">5601</span>		<span class="comment"># 监听端口server.host: "0.0.0.0"	# 监听地址elasticsearch.hosts: ["http://192.168.64.133:9200"]		# 指定es地址kibana.index: ".kibana"	# 设置kibana自己的es索引，用于保存视图、dashboard和视图</span></span><br></pre></td></tr></table></figure>
+
+<p>创建index pattern。如下图，注意pattern必须能够匹配一个已有的索引，且该索引必须有数据，没有数据这里是创建不了index pattern的。</p>
+<p>这个index pattern主要用来匹配变化的索引（比如索引名称按照日期来变，这里的*可以通配匹配到）</p>
+<p><img src="/2021/06/08/ELK/kibana-index-pattern.png" alt="image-20201230192049905"></p>
+<p>创建index pattern后就可以使用discover来看es的数据</p>
+<p>Availabel fields字段可以手动点击add，add后会放到selected field字段，之后在右侧就只显示每条数据选中的字段</p>
+<p><img src="/2021/06/08/ELK/kibana-discover.png" alt="image-20201230193618455"></p>
+<h3 id="日志收集实例"><a href="#日志收集实例" class="headerlink" title="日志收集实例"></a>日志收集实例</h3><h4 id="系统日志"><a href="#系统日志" class="headerlink" title="系统日志"></a>系统日志</h4><p>需要注意目标文件权限问题。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># 授权相关文件chmod 644 &#x2F;var&#x2F;log&#x2F;syslog# 使用logstash检查配置是否正确，若输出Configuration OK则配置没有问题&#x2F;usr&#x2F;share&#x2F;logstash&#x2F;bin&#x2F;logstash -f &#x2F;etc&#x2F;logstash&#x2F;conf.d&#x2F;syslog-es.conf -t# cat &#x2F;etc&#x2F;logstash&#x2F;conf.d&#x2F;syslog-es.confinput &#123;  file &#123;    path &#x3D;&gt; [&quot;&#x2F;var&#x2F;log&#x2F;syslog&quot;]    start_position &#x3D;&gt; &quot;beginning&quot;    start_interval &#x3D;&gt; &quot;3&quot;    type &#x3D;&gt; &quot;syslog&quot;  &#125;&#125;output &#123;  if [type] &#x3D;&#x3D; &quot;syslog&quot; &#123;    elasticsearch &#123;      hosts &#x3D;&gt; [&quot;192.168.64.133:9200&quot;]      index &#x3D;&gt; &quot;syslog-64.133-%&#123;+YYYY.MM.dd&#125;&quot;    &#125;  &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Tomcat日志"><a href="#Tomcat日志" class="headerlink" title="Tomcat日志"></a>Tomcat日志</h4><p>日志格式一般会设置为json格式，所以需要设置编码格式</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">input &#123;  file &#123;    path &#x3D;&gt; &quot;&#x2F;usr&#x2F;local&#x2F;tomcat&#x2F;logs&#x2F;localhost_access_log.*.log&quot;    start_position &#x3D;&gt; &quot;end&quot;    type &#x3D;&gt; &quot;tomcat-access-log&quot;    codec &#x3D;&gt; &quot;json&quot;  &#125;&#125;output &#123;  if [type] &#x3D;&#x3D; &quot;tomcat-access-log&quot; &#123;    elasticsearch &#123;      hosts &#x3D;&gt; [&quot;192.168.64.133:9200&quot;]      index &#x3D;&gt; &quot;logstash-tomcat-access-%&#123;+YYYY.MM.dd&#125;&quot;    &#125;  &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Java多行错误日志合并"><a href="#Java多行错误日志合并" class="headerlink" title="Java多行错误日志合并"></a>Java多行错误日志合并</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># 测试input &#123;  stdin &#123;    codec &#x3D;&gt; multiline &#123;      pattern &#x3D;&gt; &quot;^\[&quot; # 需要匹配的字符      negate &#x3D;&gt; &quot;true&quot; # 指匹配pattern后时候触发合并      what &#x3D;&gt; &quot;previous&quot; # 指匹配pattern后前向合并    &#125;  &#125;&#125;output &#123;  stdout &#123;    codec &#x3D;&gt; &quot;rubydebug&quot; # 适合调试型输出  &#125;&#125;# 实际input &#123;  file &#123;    path &#x3D;&gt; &quot;&#x2F;elk&#x2F;logs&#x2F;ELK-cluster.log&quot;    type &#x3D;&gt; &quot;javalog&quot;    start_position &#x3D;&gt; &quot;beginning&quot;    codec &#x3D;&gt; multiline &#123;      pattern &#x3D;&gt; &quot;^\[&quot;      negate &#x3D;&gt; true      what &#x3D;&gt; &quot;previous&quot;    &#125;  &#125;&#125;output &#123;  if [type] &#x3D;&#x3D; &quot;javalog&quot; &#123;    elasticsearch &#123;      hosts &#x3D;&gt; [&quot;192.168.64.133:9200&quot;]      index &#x3D;&gt; &quot;javalog-%&#123;+YYYY.MM.dd&#125;&quot;    &#125;  &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="nginx日志"><a href="#nginx日志" class="headerlink" title="nginx日志"></a>nginx日志</h4><p>需要该日志格式将nginx输出日志设置为json格式</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">input &#123;  file &#123;    path &#x3D;&gt; &quot;&#x2F;var&#x2F;log&#x2F;nginx&#x2F;access.log&quot;    start_position &#x3D;&gt; &quot;end&quot;    type &#x3D;&gt; &quot;nginx-access&quot;    codec &#x3D;&gt; json  &#125;&#125;output &#123;  if [type] &#x3D;&#x3D; &quot;nginx-access&quot; &#123;    elasticsearch &#123;      hosts &#x3D;&gt; [&quot;192.168.64.133:9200&quot;]      index &#x3D;&gt; &quot;logstash-nginx-accesslog-%&#123;+YYYY.MM.dd&#125;&quot;    &#125;  &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="tcp日志"><a href="#tcp日志" class="headerlink" title="tcp日志"></a>tcp日志</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">input &#123;  tcp &#123;    port &#x3D;&gt; 9889    type &#x3D;&gt; &quot;tcplog&quot;    mode &#x3D;&gt; &quot;server&quot;  &#125;&#125;output &#123;  elasticsearch &#123;    hosts &#x3D;&gt; [&quot;192.168.64.133:9200&quot;]    index &#x3D;&gt; &quot;logstash-tcplog-%&#123;+YYYY.MM.dd&#125;&quot;  &#125;&#125;# 测试echo &quot;伪设备&quot; &gt; &#x2F;dev&#x2F;tcp&#x2F;192.168.64.133:9889</span><br></pre></td></tr></table></figure>
+
+<h4 id="rsyslog日志收集"><a href="#rsyslog日志收集" class="headerlink" title="rsyslog日志收集"></a>rsyslog日志收集</h4><p>网络设备无法安装日志收集客户端，以下用haproxy的日志来进行收集</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># 配置haproxy日志local6.* &#x2F;var&#x2F;log&#x2F;haproxy.loglocal6.* @@192.168.64.133:514  # @@表示使用tcp协议将日志转发到一个ip:port 而@表示udp协议转发# 配置rsyslogmodule(load&#x3D;&quot;imtcp&quot;)input(type&#x3D;&quot;imtcp&quot; port&#x3D;&quot;514&quot;)module(load&#x3D;&quot;imudp&quot;)input(type&#x3D;&quot;imudp&quot; port&#x3D;&quot;514&quot;)</span><br></pre></td></tr></table></figure>
+
+<p>logstash配置</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">input &#123;  syslog &#123;    type &#x3D;&gt; &quot;system-rsyslog&quot;    port &#x3D;&gt; &quot;514&quot; # 普通用户无法监听该端口，修改logstash.service 进行监听  &#125;&#125;output &#123;  if [type] &#x3D;&#x3D; &quot;system-rsyslog&quot; &#123;    elasticsearch &#123;      hosts &#x3D;&gt; [&quot;192.168.64.133:9200&quot;]      index &#x3D;&gt; &quot;logstash-rsyslog-%&#123;+YYYY.MM.dd&#125;&quot;    &#125;  &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Beats"><a href="#Beats" class="headerlink" title="Beats"></a>Beats</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">input &#123;  beats &#123;    port &#x3D;&gt; 5044 # 监听5044端口    codec &#x3D;&gt; &quot;json&quot;  &#125;  beats &#123;    port &#x3D;&gt; 5045 # 监听5045端口    codec &#x3D;&gt; &quot;json&quot;  &#125;&#125;output &#123;  # 标准输出测试  stdout &#123;    codec &#x3D;&gt; &quot;rubydebug&quot;  &#125;  # 这里是fielbeat的fileds字段定义的标签  # 写入redis  if [fields][type] &#x3D;&#x3D; &quot;nginx-error&quot; &#123;    redis &#123;      host &#x3D;&gt; &quot;192.168.64.133&quot;      port &#x3D;&gt; &quot;6379&quot;      db &#x3D;&gt; 1      password &#x3D;&gt; &quot;12345&quot;      data_type &#x3D;&gt; &quot;list&quot;      key &#x3D;&gt; &quot;nginx-error&quot;    &#125;  &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h3><h4 id="es索引清理脚本"><a href="#es索引清理脚本" class="headerlink" title="es索引清理脚本"></a>es索引清理脚本</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">/bin/bash<span class="comment">#指定日期(3个月前)DATA=`date -d "3 month ago" +%Y.%m.%d`#当前日期time=`date`#删除3个月前的日志curl -XDELETE http://127.0.0.1:9200/*-$&#123;DATA&#125;if [ $? -eq 0 ];then    echo $time"--&gt;del $DATA log success.." &gt;&gt; /data/elk/logs/es-index-clear.logelse    echo $time"--&gt;del $DATA log fail.." &gt;&gt; /tmp/es-index-clear.logfi</span></span></span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%97%A5%E5%BF%97/" rel="tag"># 日志</a>
+              <a href="/tags/ES/" rel="tag"># ES</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/06/08/Envoy-4-%E6%B5%81%E9%87%8F%E7%AE%A1%E7%90%86/" rel="prev" title="Envoy-4-流量管理">
+      <i class="fa fa-chevron-left"></i> Envoy-4-流量管理
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#概念"><span class="nav-number">1.</span> <span class="nav-text">概念</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ES"><span class="nav-number">1.1.</span> <span class="nav-text">ES</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#节点类型"><span class="nav-number">1.1.1.</span> <span class="nav-text">节点类型</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#集群状态"><span class="nav-number">1.1.2.</span> <span class="nav-text">集群状态</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Logstash"><span class="nav-number">1.2.</span> <span class="nav-text">Logstash</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#数据类型"><span class="nav-number">1.2.1.</span> <span class="nav-text">数据类型</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#常用插件"><span class="nav-number">1.2.2.</span> <span class="nav-text">常用插件</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#Input"><span class="nav-number">1.2.2.1.</span> <span class="nav-text">Input</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#Filter"><span class="nav-number">1.2.2.2.</span> <span class="nav-text">Filter</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#Output"><span class="nav-number">1.2.2.3.</span> <span class="nav-text">Output</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#sincedb"><span class="nav-number">1.2.3.</span> <span class="nav-text">sincedb</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用场景"><span class="nav-number">2.</span> <span class="nav-text">应用场景</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#小型架构-1"><span class="nav-number">2.1.</span> <span class="nav-text">小型架构-1</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#小型架构-2"><span class="nav-number">2.2.</span> <span class="nav-text">小型架构-2</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#中型架构"><span class="nav-number">2.3.</span> <span class="nav-text">中型架构</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#大型架构"><span class="nav-number">2.4.</span> <span class="nav-text">大型架构</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#安装"><span class="nav-number">3.</span> <span class="nav-text">安装</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#环境"><span class="nav-number">3.1.</span> <span class="nav-text">环境</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ES-1"><span class="nav-number">3.2.</span> <span class="nav-text">ES</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#插件"><span class="nav-number">3.2.1.</span> <span class="nav-text">插件</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#head"><span class="nav-number">3.2.1.1.</span> <span class="nav-text">head</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#cerebro"><span class="nav-number">3.2.1.2.</span> <span class="nav-text">cerebro</span></a></li></ol></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Logstash-1"><span class="nav-number">3.3.</span> <span class="nav-text">Logstash</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Kibana"><span class="nav-number">3.4.</span> <span class="nav-text">Kibana</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#MetricBeat"><span class="nav-number">3.5.</span> <span class="nav-text">MetricBeat</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#FileBeat"><span class="nav-number">3.6.</span> <span class="nav-text">FileBeat</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置"><span class="nav-number">4.</span> <span class="nav-text">配置</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ES-2"><span class="nav-number">4.1.</span> <span class="nav-text">ES</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Logstash-2"><span class="nav-number">4.2.</span> <span class="nav-text">Logstash</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#MetrciBeat"><span class="nav-number">4.3.</span> <span class="nav-text">MetrciBeat</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#FileBeat-1"><span class="nav-number">4.4.</span> <span class="nav-text">FileBeat</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Kibana-1"><span class="nav-number">4.5.</span> <span class="nav-text">Kibana</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#日志收集实例"><span class="nav-number">5.</span> <span class="nav-text">日志收集实例</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#系统日志"><span class="nav-number">5.1.</span> <span class="nav-text">系统日志</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Tomcat日志"><span class="nav-number">5.2.</span> <span class="nav-text">Tomcat日志</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Java多行错误日志合并"><span class="nav-number">5.3.</span> <span class="nav-text">Java多行错误日志合并</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#nginx日志"><span class="nav-number">5.4.</span> <span class="nav-text">nginx日志</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#tcp日志"><span class="nav-number">5.5.</span> <span class="nav-text">tcp日志</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#rsyslog日志收集"><span class="nav-number">5.6.</span> <span class="nav-text">rsyslog日志收集</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Beats"><span class="nav-number">5.7.</span> <span class="nav-text">Beats</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#其他"><span class="nav-number">6.</span> <span class="nav-text">其他</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#es索引清理脚本"><span class="nav-number">6.1.</span> <span class="nav-text">es索引清理脚本</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

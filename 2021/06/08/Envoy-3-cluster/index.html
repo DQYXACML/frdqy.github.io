@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="集群管理器Envoy支持同时配置任意数量的上游集群，并基于集群管理器（Cluster Manager）管理它们；Cluster Manager负责为集群管理上游主机的健康状态、负载均衡机制、连接类型及适用协议等，生成集群配置的方式由静态或动态（CDS）两种；">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Envoy-3-cluster">
+<meta property="og:url" content="http://yoursite.com/2021/06/08/Envoy-3-cluster/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="集群管理器Envoy支持同时配置任意数量的上游集群，并基于集群管理器（Cluster Manager）管理它们；Cluster Manager负责为集群管理上游主机的健康状态、负载均衡机制、连接类型及适用协议等，生成集群配置的方式由静态或动态（CDS）两种；">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/Envoy-3-cluster/%E4%BD%8D%E7%BD%AE%E5%8A%A0%E6%9D%83.png">
+<meta property="og:image" content="http://yoursite.com/2021/06/08/Envoy-3-cluster/%E7%86%94%E6%96%AD.png">
+<meta property="article:published_time" content="2021-06-08T14:37:02.000Z">
+<meta property="article:modified_time" content="2021-06-08T14:42:00.353Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="Envoy">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2021/06/08/Envoy-3-cluster/%E4%BD%8D%E7%BD%AE%E5%8A%A0%E6%9D%83.png">
+
+<link rel="canonical" href="http://yoursite.com/2021/06/08/Envoy-3-cluster/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Envoy-3-cluster | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2021/06/08/Envoy-3-cluster/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Envoy-3-cluster
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-06-08 22:37:02 / 修改时间：22:42:00" itemprop="dateCreated datePublished" datetime="2021-06-08T22:37:02+08:00">2021-06-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%BE%AE%E6%9C%8D%E5%8A%A1/" itemprop="url" rel="index">
+                    <span itemprop="name">微服务</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="集群管理器"><a href="#集群管理器" class="headerlink" title="集群管理器"></a>集群管理器</h3><p>Envoy支持同时配置任意数量的上游集群，并基于集群管理器（Cluster Manager）管理它们；Cluster Manager负责为集群管理上游主机的健康状态、负载均衡机制、连接类型及适用协议等，生成集群配置的方式由静态或动态（CDS）两种；</p>
+<a id="more"></a>
+
+
+<h3 id="服务发现"><a href="#服务发现" class="headerlink" title="服务发现"></a>服务发现</h3><p>集群中的每个成员由endpoint进行标识，它可由用户静态配置，也可通过EDS或DNS服务动态发现</p>
+<ul>
+<li><p>Static：静态配置，即显式指定每个上游主机的已解析名称（IP地址/端口或unix域套按字文件）； </p>
+</li>
+<li><p>Strict DNS：严格DNS，Envoy将持续和异步地解析指定的DNS目标，并将DNS结果中的返回的每个IP地址视为上游集群中可用成员；</p>
+</li>
+<li><p>Logical DNS：逻辑DNS，集群仅使用在需要启动新连接时返回的第一个IP地址，而非严格获取DNS查询的结果并假设它们构成整个上游集群；适用于必须通过DNS访问的大规模 Web服务集群；</p>
+</li>
+<li><p>Original destination：当传入连接通过iptables的REDIRECT或TPROXY target或使用代理协议重定向到Envoy时，可以使用原始目标集群；</p>
+</li>
+<li><p>Endpoint discovery service (EDS)：EDS是一种基于GRPC或REST-JSON API的xDS管理服务器获取集群成员的服务发现方式；</p>
+</li>
+<li><p>Custom cluster：Envoy还支持在集群配置上的cluster_type字段中指定使用自定义集群发现机制</p>
+</li>
+</ul>
+<p>Envoy的服务发现结合主动健康状态检查机制来判定集群的健康状态</p>
+<ul>
+<li>健康与否的决策机制以完全分布式的方式进行，因此可以很好地应对网络分区</li>
+<li>为集群启用主机健康状态检查机制后，Envoy基于如下方式判定是否路由请求到一个主机</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Discovery Status</th>
+<th>Health Check OK</th>
+<th>Health Check Failed</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Discovered</td>
+<td>Route</td>
+<td>Don’t Route</td>
+</tr>
+<tr>
+<td>Absent</td>
+<td>Route</td>
+<td>Don’t Route / Delete</td>
+</tr>
+</tbody></table>
+<h3 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">&#123;</span></span><br><span class="line">	<span class="attr">"name":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"alt_stat_name":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"type":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"cluster_type":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"eds_cluster_config":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"connect_timeout":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"per_connection_buffer_limit_bytes":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"lb_policy":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"hosts":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"load_assignment":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"health_checks":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"max_requests_per_connection":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"circuit_breakers":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"tls_context":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"common_http_protocol_options":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"http_protocol_options":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"http2_protocol_options":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"extension_protocol_options":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"typed_extension_protocol_options":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"dns_refresh_rate":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"respect_dns_ttl":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"dns_lookup_family":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"dns_resolvers":</span> <span class="string">[],</span></span><br><span class="line">	<span class="attr">"outlier_detection":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"cleanup_interval":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"upstream_bind_config":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"lb_subset_config":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"ring_hash_lb_config":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"original_dst_lb_config":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"least_request_lb_config":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"common_lb_config":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"transport_socket":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"metadata":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"protocol_selection":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"upstream_connection_options":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"close_connections_on_host_health_failure":</span> <span class="string">"..."</span><span class="string">,</span></span><br><span class="line">	<span class="attr">"drain_connections_on_host_removal":</span> <span class="string">"..."</span></span><br><span class="line"><span class="string">&#125;</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="健康检测"><a href="#健康检测" class="headerlink" title="健康检测"></a>健康检测</h3><p>健康状态检测用于确保代理服务器不会将下游客户端的请求代理至工作异常的上游主机；主要支持两种类型的健康状态检测</p>
+<ul>
+<li>主动检测：Envoy周期性地发送探测报文至上游主机，并根据其响应判断其健康状态；<ul>
+<li>HTTP：向上游主机发送HTTP请求报文</li>
+<li>L3/L4：向上游主机发送L3/L4请求报文，基于响应的结果判定其健康状态，或仅通过连接状态进行判定</li>
+<li>Redis：向上游的redis服务器发送Redis PING ；</li>
+</ul>
+</li>
+<li>被动检测：Envoy通过异常检测（Outlier Detection）机制进行被动模式的健康状态检测；<ul>
+<li>仅支持http router、tcp proxy和redis proxy三个过滤器</li>
+<li>连续5XX：意指所有类型的错误，非http router过滤器生成的错误也会在内部映射为5xx错误代码；</li>
+<li>连续网关故障：连续5XX的子集，单纯用于http的502、503或504错误，即网关故障；</li>
+<li>连续的本地原因故障：Envoy无法连接到上游主机或与上游主机的通信被反复中断；</li>
+<li>成功率：主机的聚合成功率数据阈值</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">clusters:</span> </span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">...</span></span><br><span class="line">  <span class="string">...</span></span><br><span class="line">  <span class="attr">load_assignment:</span></span><br><span class="line">  <span class="attr">endpoints:</span> </span><br><span class="line">  <span class="bullet">-</span> <span class="attr">lb_endpoints:</span> </span><br><span class="line">    <span class="bullet">-</span> <span class="attr">endpoint:</span></span><br><span class="line">		<span class="attr">health_check_config:</span></span><br><span class="line">		  <span class="attr">port_value:</span> <span class="string">...</span> <span class="comment"># 自定义健康状态检测时使用的端口；</span></span><br><span class="line">  		<span class="string">...</span></span><br><span class="line">	<span class="string">...</span> </span><br><span class="line"><span class="attr">health_checks:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">timeout:</span> <span class="string">...</span> <span class="comment"># 超时时长</span></span><br><span class="line">  <span class="attr">interval:</span> <span class="string">...</span> <span class="comment"># 时间间隔</span></span><br><span class="line">  <span class="attr">initial_jitter:</span> <span class="string">...</span> <span class="comment"># 初始检测时间点散开量，以毫秒为单位；</span></span><br><span class="line">  <span class="attr">interval_jitter:</span> <span class="string">...</span> <span class="comment"># 间隔检测时间点散开量，以毫秒为单位；</span></span><br><span class="line">  <span class="attr">unhealthy_threshold:</span> <span class="string">...</span> <span class="comment"># 将主机标记为不健康状态的检测阈值，即至少多少次不健康的检测后才将其标记为不可用；</span></span><br><span class="line">  <span class="attr">healthy_threshold:</span> <span class="string">...</span> <span class="comment"># 将主机标记为健康状态的检测阈值，但初始检测成功一次即视主机为健康；</span></span><br><span class="line">  <span class="attr">http_health_check:</span> <span class="string">&#123;...&#125;</span> <span class="comment"># HTTP类型的检测；包括此种类型在内的以下四种检测类型必须设置一种；</span></span><br><span class="line">  <span class="attr">tcp_health_check:</span> <span class="string">&#123;...&#125;</span> <span class="comment"># TCP类型的检测；</span></span><br><span class="line">  <span class="attr">grpc_health_check:</span> <span class="string">&#123;...&#125;</span> <span class="comment"># GRPC专用的检测；</span></span><br><span class="line">  <span class="attr">custom_health_check:</span> <span class="string">&#123;...&#125;</span> <span class="comment"># 自定义检测；</span></span><br><span class="line">  <span class="attr">reuse_connection:</span> <span class="string">...</span> <span class="comment"># 布尔型值，是否在多次检测之间重用连接，默认值为true；</span></span><br><span class="line">  <span class="attr">no_traffic_interval:</span> <span class="string">...</span> <span class="comment"># 定义未曾调度任何流量至集群时其端点健康检测时间间隔，一旦其接收流量即转为正常的时间间隔；</span></span><br><span class="line">  <span class="attr">unhealthy_interval:</span> <span class="string">...</span> <span class="comment"># 标记为“unhealthy”状态的端点的健康检测时间间隔，一旦重新标记为“healthy”即转为正常时间间隔；</span></span><br><span class="line">  <span class="attr">unhealthy_edge_interval:</span> <span class="string">...</span> <span class="comment"># 端点刚被标记为“unhealthy”状态时的健康检测时间间隔，随后即转为同unhealthy_interval的定义；</span></span><br><span class="line">  <span class="attr">healthy_edge_interval:</span> <span class="string">...</span> <span class="comment"># 端点刚被标记为“healthy”状态时的健康检测时间间隔，随后即转为同interval的定义</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="TCP"><a href="#TCP" class="headerlink" title="TCP"></a>TCP</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">clusters:</span> </span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">local_service</span></span><br><span class="line">  <span class="attr">connect_timeout:</span> <span class="number">0.</span><span class="string">25s</span></span><br><span class="line">  <span class="attr">lb_policy:</span> <span class="string">ROUND_ROBIN</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">EDS</span></span><br><span class="line">  <span class="attr">eds_cluster_config:</span></span><br><span class="line">	<span class="attr">eds_config:</span></span><br><span class="line">	  <span class="attr">api_config_source:</span></span><br><span class="line">		<span class="attr">api_type:</span> <span class="string">GRPC</span></span><br><span class="line">		<span class="attr">grpc_services:</span> </span><br><span class="line">		<span class="bullet">-</span> <span class="attr">envoy_grpc:</span></span><br><span class="line">			<span class="attr">cluster_name:</span> <span class="string">xds_cluster</span></span><br><span class="line">  <span class="attr">health_checks:</span> </span><br><span class="line">  <span class="bullet">-</span> <span class="attr">timeout:</span> <span class="string">5s</span></span><br><span class="line">	<span class="attr">interval:</span> <span class="string">10s</span></span><br><span class="line">	<span class="attr">unhealthy_threshold:</span> <span class="number">2</span></span><br><span class="line">	<span class="attr">healthy_threshold:</span> <span class="number">2</span></span><br><span class="line">	<span class="attr">tcp_health_check:</span> <span class="string">&#123;&#125;</span> <span class="comment"># 空负载的tcp检测意味着仅通过连接状态判定其检测结果</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="HTTP"><a href="#HTTP" class="headerlink" title="HTTP"></a>HTTP</h4><p>http类型的检测可以自定义使用的path 、host和期望的响应码等，并能够在必要时修改（添加/删除）请求报文头</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">health_checks:</span> <span class="string">[]</span> </span><br><span class="line"><span class="bullet">-</span> <span class="string">...</span> </span><br><span class="line">  <span class="attr">http_health_check:</span> </span><br><span class="line">    <span class="attr">"host":</span> <span class="string">"..."</span> <span class="comment"># 检测时使用的主机标头，默认为空，此时使用集群名称；</span></span><br><span class="line">	<span class="attr">"path":</span> <span class="string">"..."</span> <span class="comment"># 检测时使用的路径，例如/healthz；必选参数；</span></span><br><span class="line">	<span class="attr">"service_name":</span> <span class="string">"..."</span> <span class="comment"># 用于验证检测目标集群的服务名称参数，可选；</span></span><br><span class="line">	<span class="attr">"request_headers_to_add":</span> <span class="string">[]</span> <span class="comment"># 向检测报文添加的自定义标头列表；</span></span><br><span class="line">	<span class="attr">"request_headers_to_remove":</span> <span class="string">[]</span> <span class="comment"># 从检测报文中移除的标头列表；</span></span><br><span class="line">	<span class="attr">"use_http2":</span> <span class="string">"..."</span> <span class="comment"># 是否使用http2协议；</span></span><br><span class="line">	<span class="attr">"expected_statuses":</span> <span class="string">[]</span> <span class="comment"># 期望的响应码列表</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="异常检测"><a href="#异常检测" class="headerlink" title="异常检测"></a>异常检测</h4><p>被动检测。</p>
+<p>确定主机异常 -&gt; 若尚未驱逐主机，且已驱逐的数量低于允许的阈值，则已经驱逐主机 -&gt; 主机处于驱逐状态一定时长 -&gt; 超出时长后自动恢复服务</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">clusters:</span> </span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">...</span></span><br><span class="line">  <span class="string">...</span> </span><br><span class="line">  <span class="attr">outlier_detection:</span></span><br><span class="line">	<span class="attr">consecutive_5xx:</span> <span class="string">...</span> <span class="comment"># 因连续5xx错误而弹出主机之前允许出现的连续5xx响应或本地原始错误的数量，默认为5；</span></span><br><span class="line">	<span class="attr">interval:</span> <span class="string">...</span> <span class="comment"># 弹射分析扫描之间的时间间隔，默认为10000ms或10s；</span></span><br><span class="line">	<span class="attr">base_ejection_time:</span> <span class="string">...</span> <span class="comment"># 主机被弹出的基准时长，实际时长等于基准时长乘以主机已经弹出的次数；默认为30000ms或30s；</span></span><br><span class="line">	<span class="attr">max_ejection_percent:</span> <span class="string">...</span> <span class="comment"># 因异常探测而允许弹出的上游集群中的主机数量百分比，默认为10%；不过，无论如何，至少要弹出一个主机；</span></span><br><span class="line">	<span class="attr">enforcing_consecutive_5xx:</span> <span class="string">...</span> <span class="comment"># 基于连续的5xx检测到主机异常时主机将被弹出的几率，可用于禁止弹出或缓慢弹出；默认为100；</span></span><br><span class="line">	<span class="attr">enforcing_success_rate:</span> <span class="string">...</span> <span class="comment"># 基于成功率检测到主机异常时主机将被弹出的几率，可用于禁止弹出或缓慢弹出；默认为100；</span></span><br><span class="line">	<span class="attr">success_rate_minimum_hosts:</span> <span class="string">...</span> <span class="comment"># 对集群启动成功率异常检测的最少主机数，默认值为5；</span></span><br><span class="line">	<span class="attr">success_rate_request_volume:</span> <span class="string">...</span> <span class="comment"># 在检测的一次时间间隔中必须收集的总请求的最小值，默认值为100；</span></span><br><span class="line">	<span class="attr">success_rate_stdev_factor:</span> <span class="string">...</span> <span class="comment"># 用确定成功率异常值弹出的弹射阈值的因子；弹射阈值=均值-(因子*平均成功率标准差)；不过，此处设置的值</span></span><br><span class="line"><span class="string">需要除以1000以得到因子，例如，需要使用1.3为因子时，需要将该参数值设定为1300；</span></span><br><span class="line">	<span class="attr">consecutive_gateway_failure:</span> <span class="string">...</span> <span class="comment"># 因连续网关故障而弹出主机的最少连续故障数，默认为5；</span></span><br><span class="line">	<span class="attr">enforcing_consecutive_gateway_failure:</span> <span class="string">...</span> <span class="comment"># 基于连续网关故障检测到异常状态时而弹出主机的几率的百分比，默认为0；</span></span><br><span class="line">	<span class="attr">split_external_local_origin_errors:</span> <span class="string">...</span> <span class="comment"># 是否区分本地原因而导致的故障和外部故障，默认为false；此项设置为true时，以下三项方能生效；</span></span><br><span class="line">	<span class="attr">consecutive_local_origin_failure:</span> <span class="string">...</span> <span class="comment"># 因本地原因的故障而弹出主机的最少故障次数，默认为5；</span></span><br><span class="line">	<span class="attr">enforcing_consecutive_local_origin_failure:</span> <span class="string">...</span> <span class="comment"># 基于连续的本地故障检测到异常状态而弹出主机的几率百分比，默认为100；</span></span><br><span class="line">	<span class="attr">enforcing_local_origin_success_rate:</span> <span class="string">...</span> <span class="comment"># 基于本地故障检测的成功率统计检测到异常状态而弹出主机的几率，默认为100；</span></span><br><span class="line">	</span><br><span class="line">	</span><br><span class="line"><span class="comment"># 示例</span></span><br><span class="line"><span class="comment"># 连续3个5xx时将主机弹出30s</span></span><br><span class="line"><span class="attr">consecutive_5xx:</span> <span class="string">"3"</span> </span><br><span class="line"><span class="attr">base_ejection_time:</span> <span class="string">"30s</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string"># 将弹出错误率低于群集平均值1个标准差的任何端点，统计信息每10秒进行一次评估，并且算法不会针对任何在10秒内少于500个请求的主机运行</span></span><br><span class="line"><span class="string">interval: "</span><span class="string">10s"</span></span><br><span class="line"><span class="attr">base_ejection_time:</span> <span class="string">"30s"</span></span><br><span class="line"><span class="attr">success_rate_minimum_hosts:</span> <span class="string">"10"</span></span><br><span class="line"><span class="attr">success_rate_request_volume:</span> <span class="string">"500"</span></span><br><span class="line"><span class="attr">success_rate_stdev_factor:</span> <span class="string">"1000"</span> <span class="comment"># divided by 1000 to get a double</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="负载均衡"><a href="#负载均衡" class="headerlink" title="负载均衡"></a>负载均衡</h3><p>Envoy提供了几种不同的负载均衡策略，并可大体分为全局负载均衡和分布式负载均衡两类；</p>
+<p>复杂的部署场景可以混合使用两类负载均衡策略，全局负载均衡通过定义高级路由优先级和权重以控制同级别的流量，而分布式负载均衡用于对系统中的微观变动作出反应（例如主动健康检查）；</p>
+<ul>
+<li><p>分布式负载均衡：Envoy自身基于上游主机（区域感知）的位置及健康状态等来确定如何分配负载至相关端点</p>
+<ul>
+<li>主动健康检查</li>
+<li>区域感知路由</li>
+<li>负载均衡算法</li>
+</ul>
+</li>
+<li><p>全局负载均衡：这是一种通过单个具有全局权限的组件来统一决策负载机制，Envoy的控制平面即是该类组件之一，它能够通过指定各种参数来调整应用于各端点的负载</p>
+<ul>
+<li>优先级</li>
+<li>位置权重</li>
+<li>端点权重</li>
+<li>端点健康状态</li>
+</ul>
+</li>
+</ul>
+<h4 id="算法"><a href="#算法" class="headerlink" title="算法"></a>算法</h4><p>加权轮询：ROUND_ROBIN，适用于短链接较多，是默认的算法</p>
+<p>加权LRU：LEAST_REQUEST，适用于长连接较多，随机选取2个健康主机，再从中选择一个连接数最少的主机</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">least_request_lb_config:</span></span><br><span class="line">  <span class="attr">choice_count:</span> <span class="string">"&#123;...&#125;"</span> <span class="comment"># 从健康主机中随机挑选出多少个做为样本进行最少连接数比较；</span></span><br></pre></td></tr></table></figure>
+
+<p>环哈希：RING_HASH，一致性哈希，根据url、cookie等信息（route指定）调度指定节点进行路由，可以通过虚拟节点来解决哈希偏斜现象</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">ring_hash_lb_config:</span> </span><br><span class="line">  <span class="attr">"minimum_ring_size":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span> <span class="comment"># 哈希环的最小值，环越大调度结果越接近权重酷比，默认为1024，最大值为8M</span></span><br><span class="line">  <span class="attr">"hash_function":</span> <span class="string">"..."</span><span class="string">,</span> <span class="comment"># 哈希算法，支持XX_HASH和MURMUR_HASH_2两种，默认为前一种；</span></span><br><span class="line">  <span class="attr">"maximum_ring_size":</span> <span class="string">"&#123;...&#125;"</span> <span class="comment"># 哈希环的最大值，默认为8M；不过，值越大越消耗计算资源</span></span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line"><span class="comment"># route字段配置hash属性</span></span><br><span class="line"><span class="attr">route_config:</span> </span><br><span class="line">  <span class="string">...</span> </span><br><span class="line">  <span class="attr">virutal_hosts:</span> </span><br><span class="line">  <span class="bullet">-</span> <span class="string">...</span> </span><br><span class="line">    <span class="attr">routes:</span> </span><br><span class="line">    <span class="bullet">-</span> <span class="attr">match:</span> </span><br><span class="line">      <span class="string">...</span> </span><br><span class="line">      <span class="attr">route:</span> </span><br><span class="line">        <span class="attr">cluster:</span> <span class="string">webcluster1</span> </span><br><span class="line">        <span class="attr">hash_policy:</span> <span class="string">[]</span> <span class="comment"># 指定哈希策略列表，每个列表项仅可设置如下header、cookie或connection_properties三者之一；</span></span><br><span class="line">		<span class="bullet">-</span> <span class="attr">header:</span> <span class="string">&#123;...&#125;</span></span><br><span class="line">			<span class="attr">header_name:</span> <span class="string">...</span> <span class="comment"># 要哈希的首部名称</span></span><br><span class="line">		<span class="bullet">-</span> <span class="attr">cookie:</span> <span class="string">&#123;...&#125;</span></span><br><span class="line">			<span class="attr">name:</span> <span class="string">...</span> <span class="comment"># cookie的名称，其值将用于哈希计算，必选项；</span></span><br><span class="line">			<span class="attr">ttl:</span> <span class="string">...</span> <span class="comment"># 持续时长，不存在带有ttl的cookie将自动生成该cookie；如果TTL存在且为零，则生成的cookie将是会话cookie</span></span><br><span class="line">			<span class="attr">path:</span> <span class="string">...</span> <span class="comment"># cookie的路径；</span></span><br><span class="line">		<span class="bullet">-</span> <span class="attr">connection_properties:</span> <span class="string">&#123;...&#125;</span></span><br><span class="line">			<span class="attr">source_ip:</span> <span class="string">...</span> <span class="comment"># 布尔型值，是否哈希源IP地址；</span></span><br><span class="line">		  <span class="attr">terminal:</span> <span class="string">...</span> <span class="comment"># 布尔型值，是否启用哈希算法的短路标志，即一旦当前策略生成哈希值，将不再考虑列表中后续的其它哈希策略</span></span><br></pre></td></tr></table></figure>
+
+<p>磁悬浮：MAGLEV，环哈希的变种，固定大小为65537，需要各主机映射的节点填满整个环，无论配置的主机和位置权重如何，算法都会尝试确保将每个主机至少映射一 次。环构建算法将每个主机按其权重成比例地放置在环上，直到环完全填满为止；例如，如果主机A的权重为1，主机B的权重为2，则主机A将具有21,846项，而主机B将具有43,691项（总计65,537项）。通常，与环哈希ketama算法相比，Maglev具有显着更快的表查找建立时间以及主机选择时间，但是稳定性略逊色于环哈希。</p>
+<p>随机：RANDOM，如果未配置健康检查策略，则随机负载均衡算法通常比轮询更好，他会从所有健康主机中选择一个主机</p>
+<h3 id="优先级调度"><a href="#优先级调度" class="headerlink" title="优先级调度"></a>优先级调度</h3><p>EDS配置中，属于某个特定位置的一组端点称为LocalityLbEndpoints，它们具有相同的位置（locality）、权重（load_balancing_weight）和优先级（priority）；</p>
+<ul>
+<li>locality：从大到小可由region（地域）、zone（区域）和sub_zone（子区域）进行逐级标识；</li>
+<li>load_balancing_weight：可选参数，用于为每个priority/region/zone/sub_zone配置权重，取值范围[1,n) ；通常，一个locality权重除以具有相同优先级的所有locality的权重之和即为当前locality的流量比例；此配置仅启用了位置加权负载均衡机制时才会生效；</li>
+<li>priority：此LocalityLbEndpoints组的优先级，默认为最高优先级0；</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># endpoint.LocalityLbEndpoints</span></span><br><span class="line"><span class="string">&#123;</span></span><br><span class="line">	<span class="attr">"locality":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span> </span><br><span class="line">	<span class="attr">"lb_endpoints":</span> <span class="string">[],</span> </span><br><span class="line">	<span class="attr">"load_balancing_weight":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span> </span><br><span class="line">	<span class="attr">"priority":</span> <span class="string">"..."</span> </span><br><span class="line"><span class="string">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>Envoy调度时仅挑选最高优先级的一组端点，且仅此优先级的所有端点均不可用时才进行故障转移至下一个优先级的相关端点；</p>
+<ul>
+<li>在最高优先级的端点变得不健康时，流量才会按比例转移至次一个优先级的端点；例如一个优先级中20%的端点不健康时，也将有20%的流量转移至次一个优先级端点；</li>
+<li>超配因子：也可为一组端点设定超配因子，实现部分端点故障时仍将更大比例的流量导向至本组端点；<ul>
+<li>计算公式：转移的流量=100%-健康的端点比例*超供因子；于是，对于1.4的因子来说，20%的故障比例时，所有流量仍将保留在当前组；当健康的端点比例低于72%时，才会有部分流量转移至次优先级端点；</li>
+<li>一个优先级别当前处理流量的能力也称为健康评分（健康主机比例*超配因子，上限为100%）</li>
+</ul>
+</li>
+<li>若各个优先级的健康评分总和（也称为标准化的总健康状态）小于100，则Envoy会认为没有足够的健康端点来分配所有待处理的流量，此时，各级别会根据其健康分值的比例重新分配100%的流量；例如，对于具有{20,30}健康评分的两个组（标准化的总健康状况为50）将被标准化，并导致负载比例为40%和60%；</li>
+</ul>
+<p>另外，优先级调度还支持同一优先级内部的端点降级（DEGRADED）机制，其工作方式类同于在两个不同优先级之间的端点分配流量的机制</p>
+<ul>
+<li>非降级端点健康比例*超配因子大于等于100%时，降级端点不承接流量；</li>
+<li>非降级端点的健康比例*超配因子小于100%时，降级端点承接与100%差额部分的流量；</li>
+</ul>
+<h4 id="恐慌阈值"><a href="#恐慌阈值" class="headerlink" title="恐慌阈值"></a>恐慌阈值</h4><p>调度期间，Envoy仅考虑上游主机列表中的可用（健康或降级）端点，但可用端点的百分比过低时，Envoy将忽略所有端点的健康状态并将流量调度给所有端点，此百分比即为Panic阈值，也称为恐慌阈值，该阈值可以与优先级一同使用。</p>
+<p>给定优先级中的可用端点数量下降时，Envoy会将一些流量转移至较低优先级的端点。若在低优先级中找到的承载所有流量的端点，则忽略恐慌阈值；否则，Envoy会在所有优先级之间分配流量，并在给定的优先级的可用性低于恐慌阈值时将该优先的流量分配至该优先级的所有主机</p>
+<ul>
+<li>默认的Panic阈值为50%；</li>
+<li>Panic阈值用于避免在流量增长时导致主机故障进入级联状态；</li>
+</ul>
+<h5 id="配置-1"><a href="#配置-1" class="headerlink" title="配置"></a>配置</h5><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Cluster.CommonLbConfig&#123;	"healthy_panic_threshold": "&#123;...&#125;", # 百分比数值，定义恐慌阈值，默认为50%；    "zone_aware_lb_config": "&#123;...&#125;",     "locality_weighted_lb_config": "&#123;...&#125;",     "update_merge_window": "&#123;...&#125;",     "ignore_new_hosts_until_first_hc": "..." &#125;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h4><p>基于不同的locality分别定义了两组不同优先级的端点组</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">clusters: - name: webcluster1  connect_timeout: 0.25s  type: STRICT_DNS  lb_policy: ROUND_ROBIN  load_assignment:</span>	<span class="attr">cluster_name:</span> <span class="string">webcluster1</span>	<span class="attr">endpoints:</span> 	<span class="bullet">-</span> <span class="attr">locality:</span>		<span class="attr">region:</span> <span class="string">cn-north-1</span>	  <span class="attr">priority:</span> <span class="number">0</span>	  <span class="attr">lb_endpoints:</span> 	  <span class="bullet">-</span> <span class="attr">endpoint:</span>		  <span class="attr">address:</span>			<span class="attr">socket_address:</span>		 	  <span class="attr">address:</span> <span class="string">colored</span>		 	  <span class="attr">port_value:</span> <span class="number">80</span>	<span class="bullet">-</span> <span class="attr">locality:</span>		<span class="attr">region:</span> <span class="string">cn-north-2</span>	  <span class="attr">priority:</span> <span class="number">1</span>	  <span class="attr">lb_endpoints:</span> 	  <span class="bullet">-</span> <span class="attr">endpoint:</span>		  <span class="attr">address:</span>			<span class="attr">socket_address:</span>			  <span class="attr">address:</span> <span class="string">myservice</span>			  <span class="attr">port_value:</span> <span class="number">80</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="位置加权调度"><a href="#位置加权调度" class="headerlink" title="位置加权调度"></a>位置加权调度</h3><p>位置加权负载均衡（Locality weighted load balancing）即为特定的Locality及相关LbEndpoints组显式赋予权重，并根据此权重比在各Locality之间分配流量；我们之前定义的lb_policy是每个组内的具体endpoints的负载均衡方式，而这里是在其上的一层逻辑概念。</p>
+<ul>
+<li><p>所有Locality的所有Endpoint均可用时，则根据位置权重在各Locality之间进行加权轮询；</p>
+</li>
+<li><p>注意：位置加权负载均衡同区域感知负载均衡互斥，因此，用户仅可在Cluster级别设置locality_weighted_lb_config或zone_aware_lb_config其中之一，以明确指定启用的负载均衡 策略</p>
+</li>
+<li><p>当某Locality的某些Endpoint不可用时，Envoy则按比例动态调整该Locality的权重；</p>
+<ul>
+<li><p>位置加权负载均衡方式也支持为LbEndpoint配置超配因子，默认为1.4；</p>
+</li>
+<li><p>例如，假设位置X和Y分别拥有1和2的权重，则Y的健康端点比例只有50%时，其权重调整为“2×(1.4×0.5)=1.4”，于是流量分配比例变为“1:1.4”；</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">health(L_X) &#x3D; 140 * healthy_X_backends &#x2F; total_X_backendseffective_weight(L_X) &#x3D; locality_weight_X * min(100, health(L_X))load to L_X &#x3D; effective_weight(L_X) &#x2F; Σ_c(effective_weight(L_c))</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+<li><p>若同时配置了优先级和权重，负载均衡器将会以如下步骤进行调度</p>
+<ul>
+<li>选择priority；</li>
+<li>从选出的priority中选择locality；</li>
+<li>从选出的locality中选择Endpoint；</li>
+</ul>
+</li>
+</ul>
+<p><img src="/2021/06/08/Envoy-3-cluster/%E4%BD%8D%E7%BD%AE%E5%8A%A0%E6%9D%83.png" alt="位置加权"></p>
+<h4 id="示例-1"><a href="#示例-1" class="headerlink" title="示例"></a>示例</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 该集群定义了两个Locality，cn-north-1和cn-north-2，它们分别具有权重1和2；它们具有相同的优先级0；于是，所有端点都健康时，该集群的流量会以1:2的比例分配至cn-north-1和cnnorth-2假设cn-north-2具有两个端点，且一个端点健康状态检测失败时，则流量分配变更为1:1.4clusters: - name: webcluster1  connect_timeout: 0.25s  type: STRICT_DNS  lb_policy: ROUND_ROBIN  common_lb_config:	locality_weighted_lb_config: &#123;&#125; # 启用位置加权负载均衡机制，它没有可用的子参数；  load_assignment:	cluster_name: webcluster1	policy:	  overprovisioning_factor: 140  # 设置超卖因子	endpoints: 	- locality:		region: cn-north-1	  priority: 0	  load_balancing_weight: 1  # 整数值，定义当前位置或优先级的权重，最小值为1；	  lb_endpoints: 	  - endpoint:		  address:			socket_address:			  address: colored			  port_value: 80	- locality:		region: cn-north-2	  priority: 0	  load_balancing_weight: 2  # 整数值，定义当前位置或优先级的权重，最小值为1；	  lb_endpoints: 	  - endpoint:		address:		  socket_address:			address: myservice			port_value: 80</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="子集选择"><a href="#子集选择" class="headerlink" title="子集选择"></a>子集选择</h3><p>Envoy还支持在一个集群中基于子集实现更细粒度的流量分发</p>
+<ul>
+<li>首先，在集群的上游主机上添加元数据(键值标签)，并使用子集选择器(分类元数据)将上游主机划分为子集；</li>
+<li>而后，在路由配置中指定负载均衡器可以选择的且必须具有匹配的元数据的上游主机，从而实现向特定子集的路由；</li>
+<li>各子集内的主机间的负载均衡采用集群定义的策略(lb_policy)；</li>
+</ul>
+<p>此外，若配置了子集，但路由并未指定元数据或不存在与指定元数据匹配的子集时，则子集均衡均衡器为其应用“回退策略”</p>
+<ul>
+<li>NO_FALLBACK：请求失败，类似集群中不存在任何主机；此为默认策略；</li>
+<li>ANY_ENDPOINT：在所有主机间进行调度，不再考虑主机元数据；</li>
+<li>DEFAULT_SUBSET：调度至默认的子集，该子集需要事先定义；</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># endpoint配置k-v示例，必须要定义在“envoy.lb”过滤器下；# 只有通过EDS或者load_assignment定义的字段才可以定义元数据load_assignment:  cluster_name: webcluster1  endpoints:   - lb_endpoints: 	- endpoint:		address:		  socket_address:		    protocol: TCP		    address: ep1			port_value: 80	  metadata:		filter_metadata:		  envoy.lb: 		    version: '1.0' 		    stage: 'prod'# 集群端定义子集clusters: - name  ...  lb_subset_config	fallback_policy: "..." # 回退策略，默认为NO_FALLBACK	default_subset: "&#123;...&#125;" # 回退策略DEFAULT_SUBSET使用的默认子集；	subset_selectors: [] # 子集选择器	- keys: [] # 定义一个选择器，指定用于归类主机元数据的键列表；	  fallback_policy: ... # 当前选择器专用的回退策略；	locality_weight_aware: "..." # 是否在将请求路由到子集时考虑端点的位置和位置权重；存在一些潜在的缺陷；	scale_locality_weight: "..." # 是否将子集与主机中的主机比率来缩放每个位置的权重；	panic_mode_any: "..." # 是否在配置回退策略且其相应的子集无法找到主机时尝试从整个集群中选择主机；	list_as_any: "..."		# 路由端定义元数据匹配条件routes: - name: ...   match: &#123;...&#125;  route: &#123;...&#125; # 路由目标，cluster和weighted_clusters只能使用其一；	cluster:	metadata_match: &#123;...&#125; # 子集负载均衡器使用的端点元数据匹配条件；若使用了weighted_clusters且内部定义了metadat_match，则元数据将被合并，且weighted_cluster中定义的值优先；过滤器名称应指定为envoy.lb；	  filter_metadata: &#123;...&#125; # 元数据过滤器		envoy.lb: &#123;...&#125;		  key1: value1		  key2: value2	weighted_clusters: &#123;...&#125;	  clusters: [] 	  - name: ... 	    weight: ... 	    metadata_match: &#123;...&#125;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="示例-2"><a href="#示例-2" class="headerlink" title="示例"></a>示例</h4><p>cluster</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">clusters: - name: webclusters  lb_policy: ROUND_ROBIN  lb_subset_config:</span>	<span class="attr">fallback_policy:</span> <span class="string">DEFAULT_SUBSET</span>	<span class="attr">default_subset:</span>	  <span class="attr">stage:</span> <span class="string">prod</span>	  <span class="attr">version:</span> <span class="string">'1.0'</span> <span class="attr">type:</span> <span class="string">std</span>	<span class="attr">subset_selectors:</span> 	<span class="bullet">-</span> <span class="attr">keys:</span> <span class="string">[stage,</span> <span class="string">type]</span> 	<span class="bullet">-</span> <span class="attr">keys:</span> <span class="string">[stage,</span> <span class="string">version]</span> 	<span class="bullet">-</span> <span class="attr">keys:</span> <span class="string">[version]</span> 	<span class="bullet">-</span> <span class="attr">keys:</span> <span class="string">[xlarge,</span> <span class="string">version]</span></span><br></pre></td></tr></table></figure>
+
+<p>router</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">routes: - match:</span> 	<span class="attr">prefix:</span> <span class="string">"/"</span> 	<span class="attr">headers:</span> 	<span class="bullet">-</span> <span class="attr">name:</span> <span class="string">x-custom-version</span>	  <span class="attr">value: pre-release  route:     cluster: webcluster1     metadata_match:       filter_metadata:         envoy.lb:           version:</span> <span class="number">1.2</span><span class="string">-pre</span>		  <span class="attr">stage: dev- match:</span> 	<span class="attr">prefix:</span> <span class="string">"/"</span> 	<span class="attr">headers:</span> 	<span class="bullet">-</span> <span class="attr">name:</span> <span class="string">x-hardware-test</span> 	  <span class="attr">value: memory  route:     cluster: webcluster1     metadata_match:       filter_metadata:         envoy.lb:           type:</span> <span class="string">bigmem</span>		  <span class="attr">stage: pro- match:     prefix:</span> <span class="string">"/"</span>  <span class="attr">route:     weighted_clusters:       clusters:       - name: webcluster1         weight: 90         metadata_match:           filter_metadata:             envoy.lb:               version:</span> <span class="string">'1.0'</span>       <span class="bullet">-</span> <span class="attr">name: webcluster1         weight: 10         metadata_match:           filter_metadata:             envoy.lb:               version:</span> <span class="string">'1.1'</span>     <span class="attr">metadata_match:       filter_metadata:         envoy.lb:           stage:</span> <span class="string">pro</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="区域感知"><a href="#区域感知" class="headerlink" title="区域感知"></a>区域感知</h3><p>通常，始发集群（客户端）和上游集群（服务端）属于不同区域的部署中，Envoy执行区域感知路由。区域感知路由（zone aware routing）尽可能地向上游集群中的本地区域发送流量，并大致确保将流量均衡分配至上游相关的所有端点；</p>
+<p>它依赖于以下几个先决条件</p>
+<ul>
+<li>始发集群（客户端）和上游集群（服务端）都未处于恐慌模式；</li>
+<li>启用了区域感知路由</li>
+<li>始发集群与上游集群具有相同数量的区域；</li>
+<li>上游集群具有能承载所有请求流量的主机</li>
+</ul>
+<p>Envoy将流量路由到本地区域，还是进行跨区域路由取决于始发集群和上游集群中健康主机的百分比</p>
+<ul>
+<li>始发集群的本地区域百分比大于上游集群中本地区域的百分比：Envoy 计算可以直接路由到上游集群的本地区域的请求的百分比，其余的请求被路由到其它区域；</li>
+<li>始发集群本地区域百分比小于上游集群中的本地区域百分比：可实现所有请求的本地区域路由，并可承载一部分其它区域的跨区域路由</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">common_lb_config:   zone_aware_lb_config:</span>     <span class="attr">"routing_enabled":</span> <span class="string">"&#123;...&#125;"</span><span class="string">,</span> <span class="comment"># 值类型为百分比，用于配置在多大比例的请求流量上启用区域感知路由机制，默认为100%，；	"min_cluster_size": "&#123;...&#125;" # 配置区域感知路由所需的最小上游集群大小，上游集群大小小于指定的值时即使配置了区域感知路由也不会执行 区域感知路由；默认值为6，可用值为64位整数；</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="熔断"><a href="#熔断" class="headerlink" title="熔断"></a>熔断</h3><p>多级服务调度用场景中，某上游服务因网络故障或服务繁忙无法响应请求时很可能会导致多级上游调用者大规模级联故障，进而导致整个系统不可用，此即为服务的雪崩效应；</p>
+<p>上游服务（被调用者，即服务提供者）因压力过大而变得响应过慢甚至失败时，下游服务（服务消费者）通过暂时切断对上游的请求调用达到牺牲局部，从而保全上游甚至是整体；而在Envoy中，熔断是在网络级别的强制断路，不需要应用做额外操作</p>
+<h4 id="状态"><a href="#状态" class="headerlink" title="状态"></a>状态</h4><p>Open：在固定时间窗口内，检测到的失败指标达到指定的阈值时启动熔断；所有请求会直接失败而不再发往后端端点；</p>
+<p>Half Open：断路器在工作一段时间后自动切换至半打开状态，并根据下一次请求的返回结果判定状态切换</p>
+<p>Closed：一定时长后上游服务可能会变得再次可用，此时下游即可关闭熔断，并再次请求其服务；</p>
+<p><img src="/2021/06/08/Envoy-3-cluster/%E7%86%94%E6%96%AD.png" alt="熔断"></p>
+<h4 id="断路机制"><a href="#断路机制" class="headerlink" title="断路机制"></a>断路机制</h4><p>Envoy支持多种类型的完全分布式断路机制，达到由其定义的阈值时，相应的断路器即会溢出：</p>
+<p>每个断路器都可在每个集群及每个优先级的基础上进行配置和跟踪，它们可分别 拥有各自不同的设定；</p>
+<ul>
+<li>集群最大连接数：Envoy同上游集群建立的最大连接数，仅适用于HTTP/1.1，因为HTTP/2可以链路复用</li>
+<li>集群最大请求数：在给定的时间，集群中的所有主机未完成的最大请求数，仅适用于HTTP/2</li>
+<li>集群可挂起的最大请求数：连接池满载时所允许的等待队列的最大长度；</li>
+<li>集群最大活动并发重试次数：给定时间内集群中所有主机可以执行的最大并发重试次数；</li>
+<li>集群最大并发连接池：可以同时实例化出的最大连接池数量；</li>
+</ul>
+<h4 id="配置-2"><a href="#配置-2" class="headerlink" title="配置"></a>配置</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">clusters: - name: ...  ...   connect_timeout:</span> <span class="string">...</span> <span class="comment"># TCP连接的超时时长，即主机网络连接超时，合理的设置可以能够改善因调用服务变慢而导致整个链接变慢的情形；  max_requests_per_connection: ... # 每个连接可以承载的最大请求数，HTTP/1.1和HTTP/2的连接池均受限于此设置，无设置则无限制，1表示禁用keep-alive  ...   circuit_breakers: &#123;...&#125; # 熔断相关的配置，可选；	threasholds: [] # 适用于特定路由优先级的相关指标及阈值的列表；	- priority: ... # 当前断路器适用的路由优先级；	  max_connections: ... # 可发往上游集群的最大并发连接数，仅适用于HTTP/1，默认为1024；超过指定数量的连接则将其短路；	  max_pending_requests: ... # 允许请求服务时的可挂起的最大请求数，默认为1024；；超过指定数量的连接则将其短路；	  max_requests: ... # Envoy可调度给上游集群的最大并发请求数，默认为1024；仅适用于HTTP/2	  max_retries: ... # 允许发往上游集群的最大并发重试数量（假设配置了retry_policy），默认为3；	  track_remaining: ... # 其值为true时表示将公布统计数据以显示断路器打开前所剩余的资源数量；默认为false；	  max_connection_pools: ... # 每个集群可同时打开的最大连接池数量，默认为无限制	  # 显然，将max_connections和最max_pending_requests都设置为 1，表示如果超过了一个连接同时发起请求，Envoy就会熔断，从而阻止后续的请求或连接；</span></span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Envoy/" rel="tag"># Envoy</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/06/08/Envoy-2-xDS-API/" rel="prev" title="Envoy-2-xDS API">
+      <i class="fa fa-chevron-left"></i> Envoy-2-xDS API
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/06/08/Envoy-4-%E6%B5%81%E9%87%8F%E7%AE%A1%E7%90%86/" rel="next" title="Envoy-4-流量管理">
+      Envoy-4-流量管理 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#集群管理器"><span class="nav-number">1.</span> <span class="nav-text">集群管理器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#服务发现"><span class="nav-number">2.</span> <span class="nav-text">服务发现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置"><span class="nav-number">3.</span> <span class="nav-text">配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#健康检测"><span class="nav-number">4.</span> <span class="nav-text">健康检测</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#TCP"><span class="nav-number">4.1.</span> <span class="nav-text">TCP</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HTTP"><span class="nav-number">4.2.</span> <span class="nav-text">HTTP</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#异常检测"><span class="nav-number">4.3.</span> <span class="nav-text">异常检测</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡"><span class="nav-number">5.</span> <span class="nav-text">负载均衡</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#算法"><span class="nav-number">5.1.</span> <span class="nav-text">算法</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#优先级调度"><span class="nav-number">6.</span> <span class="nav-text">优先级调度</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#恐慌阈值"><span class="nav-number">6.1.</span> <span class="nav-text">恐慌阈值</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#配置-1"><span class="nav-number">6.1.1.</span> <span class="nav-text">配置</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#示例"><span class="nav-number">6.2.</span> <span class="nav-text">示例</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#位置加权调度"><span class="nav-number">7.</span> <span class="nav-text">位置加权调度</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#示例-1"><span class="nav-number">7.1.</span> <span class="nav-text">示例</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#子集选择"><span class="nav-number">8.</span> <span class="nav-text">子集选择</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#示例-2"><span class="nav-number">8.1.</span> <span class="nav-text">示例</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#区域感知"><span class="nav-number">9.</span> <span class="nav-text">区域感知</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#熔断"><span class="nav-number">10.</span> <span class="nav-text">熔断</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#状态"><span class="nav-number">10.1.</span> <span class="nav-text">状态</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#断路机制"><span class="nav-number">10.2.</span> <span class="nav-text">断路机制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#配置-2"><span class="nav-number">10.3.</span> <span class="nav-text">配置</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

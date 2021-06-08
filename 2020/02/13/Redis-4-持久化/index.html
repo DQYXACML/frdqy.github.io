@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="持久化redis数据全部保存在内存中，因此它处理请求很快，但是为了长久保存这些数据还需要将内存中的数据保存到磁盘中，这就引出持久化概念。需要注意的是，持久化不能取代备份，仍然要指定相关的备份策略。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis(4)-持久化">
+<meta property="og:url" content="http://yoursite.com/2020/02/13/Redis-4-%E6%8C%81%E4%B9%85%E5%8C%96/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="持久化redis数据全部保存在内存中，因此它处理请求很快，但是为了长久保存这些数据还需要将内存中的数据保存到磁盘中，这就引出持久化概念。需要注意的是，持久化不能取代备份，仍然要指定相关的备份策略。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-02-13T14:01:13.000Z">
+<meta property="article:modified_time" content="2020-02-19T02:12:30.044Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="redis">
+<meta property="article:tag" content="写时复制">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/02/13/Redis-4-%E6%8C%81%E4%B9%85%E5%8C%96/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Redis(4)-持久化 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/13/Redis-4-%E6%8C%81%E4%B9%85%E5%8C%96/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Redis(4)-持久化
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-02-13 22:01:13" itemprop="dateCreated datePublished" datetime="2020-02-13T22:01:13+08:00">2020-02-13</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-19 10:12:30" itemprop="dateModified" datetime="2020-02-19T10:12:30+08:00">2020-02-19</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Redis/" itemprop="url" rel="index">
+                    <span itemprop="name">Redis</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="持久化"><a href="#持久化" class="headerlink" title="持久化"></a>持久化</h3><p>redis数据全部保存在内存中，因此它处理请求很快，但是为了长久保存这些数据还需要将内存中的数据保存到磁盘中，这就引出持久化概念。需要注意的是，持久化不能取代备份，仍然要指定相关的备份策略。</p>
+<a id="more"></a>
+
+<h4 id="写时复制"><a href="#写时复制" class="headerlink" title="写时复制"></a>写时复制</h4><p>当我们使用fork系统调用生成一个子进程时，为了提高进程创建的速度，子进程的内存不使用调度的方式分配，而是使用类似页面共享的方法，即子进程的虚拟地址和物理地址的映射和父进程映射是相同的，子进程的地址空间相当于父进程的副本。</p>
+<p>当子进程或者父进程发生写操作时，将需要写的物理内存地址空间作复制一份，即写在新的物理地址空间，这样就不会影响原来的地址空间内的数据。即不管父进程还是子进程对其共享的内存中的数据进行修改都不会影响对方的访问，对方仍然访问的是fork是的数据。</p>
+<h4 id="RDB"><a href="#RDB" class="headerlink" title="RDB"></a>RDB</h4><p>以fork方式生成一个子进程以快照模式保存整个数据集，保存格式是二进制格式。它按照事先定义的策略，周期性地将数据全部保存至磁盘(不是增量)，其数据文件默认为dump.rdb。linux操作系统有<strong>写时复制</strong>机制，父进程和子进程会共享相同的物理页面，当父进程处理写请求时，操作系统为父进程修改的页面创建副本，因此此时子进程快照保存时一定是时间点一致的数据。(RDB时只有父进程写，子进程负责读进行备份)</p>
+<p>客户端也可以显示使用SAVE和BGSAVE命令启动快照保存机制</p>
+<ul>
+<li>SAVE：同步，在主进程中保存快照，此时会阻塞所有客户端请求</li>
+<li>BGSAVE：异步，fork子进程在后台执行，不会阻塞主进程处理请求</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#RDB配置文件，保存在/etc/redis目录中</span></span><br><span class="line">save			<span class="comment">#这里是用来配置触发Redis的持久化条件，也就是什么时候将内存中的数据保存到硬盘，格式为save num1 num2表示num1秒内有num2个key发生变化则同步到磁盘，使用的是bgsave机制</span></span><br><span class="line">rdbcompression	<span class="comment">#对于存储在磁盘的快照是否压缩存储，默认为yes</span></span><br><span class="line">rdbchecksum		<span class="comment">#对于存储的快照是否校验，默认yes</span></span><br><span class="line">dbfilename		<span class="comment">#设置快照名称，默认为dump.rdb</span></span><br><span class="line">dir				<span class="comment">#设置快照文件的存放路径，这个配置项一定是个目录，使用dbfilename作为文件名</span></span><br><span class="line">stop-writes-on-bgsave-error	<span class="comment">#当同步磁盘失败时是否停止接收数据，默认为yes</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="AOF"><a href="#AOF" class="headerlink" title="AOF"></a>AOF</h4><p>Append only file，表示将所有写操作都追加到AOF文件的末尾，但是这样可能会因为重复冗余的写操作导致文件过大，因此redis提供合并冗余操作的机制BGREWRITEAOF来优化。例如重复1000次incr命令，这样会导致大量的incr命令附加到AOF文件末尾，这效率极低，而使用BGREWRITEAOF优化后会将重复的写命令以少量的已存在的命令进行替换。这种优化策略根据redis版本分为两种：</p>
+<ul>
+<li>4.0以前：BGREWRITEAOF实际上是对内存中现存的AOF文件进行重写，首先主进程fork一个子进程来处理，它不会读取内存中已存的AOF文件，而是通过将内存中的数据以命令的方式保存到临时文件中，在这个过程中主进程仍然会接收客户端请求，且将这些请求的写操作依然保存于原来的AOF文件中且同时保存在一个缓冲队列中(依旧保存在老的AOF文件中是防止重写AOF失败导致这期间的写操作请求丢失)，子进程重写入临时文件结束后通知父进程，父进程将保存在缓冲队列中的命令追加写入临时文件中，然后父进程用临时文件替换老的AOF文件。</li>
+<li>4.0以后：采取的策略也是重写，它虽然使用BGREWRITEAOF机制来优化但优化机制不一样，新版使用的是RDB和AOF结合的方式。它将老的数据RDB到AOF文件中，将增量的数据以指令的方式追加到AOF中。</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#AOF配置文件，保存在/etc/redis目录中</span></span><br><span class="line">appendonly		<span class="comment">#使用AOF主从方式，默认为no</span></span><br><span class="line">appendfilename	<span class="comment">#文件名称</span></span><br><span class="line">appendfsync		<span class="comment">#持久策略，no表示不执行fsync，由内核保证数据同步到磁盘(内核缓冲区满后写入磁盘)，可能会丢失一个缓冲区大小的数据(一般位4k)；always表示每次写入都执行fsync，以保证数据同步到磁盘；everysec表示每秒执行一次fsync，可能会导致丢失这1s数据</span></span><br><span class="line">auto-aof-rewrite-percentage 100	<span class="comment">#表示当前AOF文件已经是上次重写AOF是的二倍，立即触发重写AOF</span></span><br><span class="line">auto-aof-rewrite-min-size 64mb	<span class="comment">#表示当前AOF文件大小超过64mb时进行AOF重写操作</span></span><br><span class="line">no-appendfsync-on-rewrite no	<span class="comment">#表示是否在重写AOF时将新写操作进行缓存，yes表示缓存</span></span><br><span class="line">aof-use-rdb-preamble yes		<span class="comment">#是否使用老数据rdb，新数据AOF的方式进行持久化</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="AOF文件格式"><a href="#AOF文件格式" class="headerlink" title="AOF文件格式"></a>AOF文件格式</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#假设写一个set k1 hello</span></span><br><span class="line"><span class="string">*2</span></span><br><span class="line"><span class="string">$6</span></span><br><span class="line"><span class="string">SELECT</span></span><br><span class="line"><span class="string">$1</span></span><br><span class="line"><span class="number">0</span></span><br><span class="line"><span class="string">*3</span></span><br><span class="line"><span class="string">$3</span></span><br><span class="line"><span class="string">set</span></span><br><span class="line"><span class="string">$2</span></span><br><span class="line"><span class="string">k1</span></span><br><span class="line"><span class="string">$5</span></span><br><span class="line"><span class="string">hello</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line"><span class="string">第一行*2表示这一部分有两段，分别是$开头的两个</span></span><br><span class="line"><span class="string">$6表示下一个操作的字符数</span></span><br><span class="line"><span class="string">可以手动删除操作过的序列，没写入磁盘时可以重启redis进行恢复</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h4><p>如果RDB和AOF同时启用，则BGSAVE和BGREWRITEAOF不会同时执行，且在redis服务器启动用于恢复数据时，优先使用AOF。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/redis/" rel="tag"># redis</a>
+              <a href="/tags/%E5%86%99%E6%97%B6%E5%A4%8D%E5%88%B6/" rel="tag"># 写时复制</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/13/Redis-3-%E4%BA%8B%E5%8A%A1%E3%80%81%E8%AE%A2%E9%98%85%E3%80%81%E7%BC%93%E5%AD%98/" rel="prev" title="Redis(3)-事务、订阅、缓存">
+      <i class="fa fa-chevron-left"></i> Redis(3)-事务、订阅、缓存
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/02/14/Redis-5-%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/" rel="next" title="Redis(5)-主从复制">
+      Redis(5)-主从复制 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#持久化"><span class="nav-number">1.</span> <span class="nav-text">持久化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#写时复制"><span class="nav-number">1.1.</span> <span class="nav-text">写时复制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#RDB"><span class="nav-number">1.2.</span> <span class="nav-text">RDB</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#AOF"><span class="nav-number">1.3.</span> <span class="nav-text">AOF</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#AOF文件格式"><span class="nav-number">1.4.</span> <span class="nav-text">AOF文件格式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#注意"><span class="nav-number">1.5.</span> <span class="nav-text">注意</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

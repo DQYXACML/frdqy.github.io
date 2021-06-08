@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="基础概念Redis是一个KV型存储引擎，为了提高效率，它的所有工作都在内存中实现(可以做缓存)，但为了持久存储也会在磁盘上做冗余。它用作数据结构服务器，即存储例如String、list、Hash、Set、Bitmap等类型的数据。 Redis工作在单线程单进程单实例模式，它通过内核的epoll系统调用来处理多路并行请求。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis(1)-基本原理和安装配置">
+<meta property="og:url" content="http://yoursite.com/2020/02/11/Redis-1-%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86%E5%92%8C%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/index.html">
+<meta property="og:site_name" content="Frdqy的博客">
+<meta property="og:description" content="基础概念Redis是一个KV型存储引擎，为了提高效率，它的所有工作都在内存中实现(可以做缓存)，但为了持久存储也会在磁盘上做冗余。它用作数据结构服务器，即存储例如String、list、Hash、Set、Bitmap等类型的数据。 Redis工作在单线程单进程单实例模式，它通过内核的epoll系统调用来处理多路并行请求。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-02-11T09:34:30.000Z">
+<meta property="article:modified_time" content="2020-02-19T02:12:13.974Z">
+<meta property="article:author" content="Frdqy">
+<meta property="article:tag" content="redis">
+<meta property="article:tag" content="epoll">
+<meta property="article:tag" content="多路复用">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/02/11/Redis-1-%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86%E5%92%8C%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Redis(1)-基本原理和安装配置 | Frdqy的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="Frdqy的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Frdqy的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">记录默默到无闻的学习路</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签<span class="badge">101</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档<span class="badge">86</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/11/Redis-1-%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86%E5%92%8C%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/head.jpg">
+      <meta itemprop="name" content="Frdqy">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Frdqy的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Redis(1)-基本原理和安装配置
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-02-11 17:34:30" itemprop="dateCreated datePublished" datetime="2020-02-11T17:34:30+08:00">2020-02-11</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-19 10:12:13" itemprop="dateModified" datetime="2020-02-19T10:12:13+08:00">2020-02-19</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Redis/" itemprop="url" rel="index">
+                    <span itemprop="name">Redis</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="基础"><a href="#基础" class="headerlink" title="基础"></a>基础</h3><h4 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h4><p>Redis是一个KV型存储引擎，为了提高效率，它的所有工作都在内存中实现(可以做缓存)，但为了持久存储也会在磁盘上做冗余。它用作数据结构服务器，即存储例如String、list、Hash、Set、Bitmap等类型的数据。</p>
+<p>Redis工作在单线程单进程单实例模式，它通过内核的epoll系统调用来处理多路并行请求。</p>
+<a id="more"></a>
+<h4 id="epoll原理"><a href="#epoll原理" class="headerlink" title="epoll原理"></a>epoll原理</h4><p>早期的内核程序处理多路请求时使用read系统调用来处理，用户空间的进程如果没有读取到对应的文件描述符fd就会一直阻塞，从而妨碍其他进程处理请求。这就是初期的BIO阻塞模型。</p>
+<p>随后为了解决阻塞问题，提出了同步非阻塞的NIO模型。它支持单进程在用户空间通过轮询的方式处理多个并发请求，这样就不会阻塞(多个进程会阻塞，这里就使用单进程轮询处理)。</p>
+<p>NIO又引出新的问题，即如果请求量很大那么进程将频繁的在用户空间和内核空间进行切换(之所以不停切换是用户空间进程不知道哪些fd已经准备好需要被使用)，会消耗大量CPU资源。为了解决这个问题，内核进行了修改，出现了新的系统调用select。select实现了将多个可以使用的fd同时从内核发送给用户空间进程，由用户空间进程遍历选择依次进行read系统调用读取该连接，这样就大大减少了进程切换的开销。</p>
+<p>上述select方法已经很大程度上减少了资源消耗，但是仍然需要将fd相关数据从内核态内存拷贝到用户空间进程的内存空间，以及select并不知道哪个fd是有数据状态，它自身也需要不断遍历来选择，有没有办法减少这种开销呢？这就引出了epoll机制。它实际上是使用mmap系统调用将用户空间的一块内存和内核空间的一块内存作为共享内存空间，其内维护着数据结构(红黑树和双向链表)，其中红黑树用于管理哪些fd需要被监视，双向链表实现队列。其中双向链表由内核维护，当进程在等待fd时，会创建了一个epoll对象(epoll对象本身也是文件系统资源，也拥有自己的等待队列)并且该epoll对象会被添加到fd等待队列中(如果是多个fd就将epoll放到每个fd等待队列中)。当某个进程调用epoll_wait等待时，内核将该进程添加到epoll对象的等待队列中，当某个fd收到数据时中断程序会修改epoll的双向链表(就绪队列)，添加fd引用并且唤醒阻塞的进程，从而该进程再次得到CPU调用且根据双向链表知道是哪个fd有数据。</p>
+<p>epoll是三个系统调用：</p>
+<ul>
+<li><p>epoll_create：用户创建epoll对象，该对象的成员包括内核维护的双向链表</p>
+</li>
+<li><p>epoll_wait：用于epoll对象等待数据</p>
+</li>
+<li><p>epoll_cli：用于给epoll对象添加需要监控的fd，将fd添加到红黑树上</p>
+</li>
+</ul>
+<h4 id="持久存储"><a href="#持久存储" class="headerlink" title="持久存储"></a>持久存储</h4><p>redis持久存储主要有两种方式：快照和AOF</p>
+<ul>
+<li>snapshotting：快照，数据异步从内存传输到磁盘</li>
+<li>AOF：即将每次的写操作附加在一个文件后面写入磁盘，类似于mysql的事务日志</li>
+</ul>
+<h4 id="NoSql特性"><a href="#NoSql特性" class="headerlink" title="NoSql特性"></a>NoSql特性</h4><p>Redis属于NoSql存储，NoSql存储主要分为四种：KV键值型、Column列式存储、Documentation文档存储、Graph图表存储</p>
+<h4 id="与memcached区别"><a href="#与memcached区别" class="headerlink" title="与memcached区别"></a>与memcached区别</h4><p>memcached也是KV键值对的NoSql型数据库系统，他们都工作在内存中，一个重要的区别是memcached的value是没有数据类型的，而Redis的value是有数据类型的。memcached存储时将所有键值对都获取然后客户端通过程序解码(解析json格式数据)进行特定数据获取，而Redis由于有数据类型且提供了每种类型特定的获取方法(index、lpop等)，因此可以直接获取对应数据，不需要加载全部数据，换句话说所有的计算都是在server端实现不需要客户端额外的解码等消耗，因此大大提高了效率。</p>
+<h3 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#官网http://download.redis.io/releases/redis-5.0.7.tar.gz，此处使用编译安装</span></span><br><span class="line">wget http://download.redis.io/releases/redis-5.0.7.tar.gz</span><br><span class="line"><span class="comment">#解压</span></span><br><span class="line">tar xf redis-5.0.7.tar.gz</span><br><span class="line"><span class="comment">#编译</span></span><br><span class="line">make</span><br><span class="line"><span class="comment">#安装，将可执行文件迁移</span></span><br><span class="line">make install</span><br><span class="line"><span class="comment">#服务安装，切换至util目录下进行，全部默认即可</span></span><br><span class="line">./install_server.sh</span><br><span class="line"><span class="comment">#启动，名字后面为端口号，根据不同端口进行修改</span></span><br><span class="line">systemctl start redis_6379</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意，如果make失败产生垃圾需要清除，具体命令以README.md为准</span></span><br><span class="line">make distclean</span><br><span class="line"></span><br><span class="line"><span class="comment">#注意</span></span><br><span class="line">redis根据监听端口号不同区分不同的服务</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h3><p>redis配置文件根据不同的端口号命名不同，通常以xxxx.conf(其中xxxx为端口号)</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">loadmoudle		<span class="comment">#加载自定义模块</span></span><br><span class="line"><span class="built_in">bind</span>			<span class="comment">#redis服务允许访问的地址</span></span><br><span class="line">port			<span class="comment">#redis服务运行端口，默认为6379</span></span><br><span class="line">timeout			<span class="comment">#客户端连接超时时长，即多久没有操作则关闭连接，0表示不设置时长</span></span><br><span class="line">tcp-keepalive	<span class="comment">#周期性检测客户端监控状态，同样0表示不检测</span></span><br><span class="line">protected-mode	<span class="comment">#是否开启保护模式，即是否允许客户端连接，默认为yes</span></span><br><span class="line">tcp-backlog		<span class="comment">#tcp等待队列长度满后，找其他地方存储请求</span></span><br><span class="line">daemonize		<span class="comment">#redis是否运行为守护进程</span></span><br><span class="line">pidfile			<span class="comment">#配置PID文件路径</span></span><br><span class="line">loglevel		<span class="comment">#定义日志级别debug(开发测试)、verbose、notice(生产环境)、warning，默认为notice</span></span><br><span class="line">logfile			<span class="comment">#配置log文件地址,默认打印在命令行终端的窗口上</span></span><br><span class="line">databases		<span class="comment">#设置数据库的数目。默认的数据库是DB 0 ，可以在每个连接上使用select &lt;dbid&gt;命令选择一个不同的数据库，dbid是一个介于0到databases-1之间的数值。默认值是16，也就是说默认Redis有16个数据库。</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#内存相关</span></span><br><span class="line">maxmemory		<span class="comment">#允许使用的最大内存大小，一般限制在1-10G</span></span><br><span class="line">maxmemory-policy<span class="comment">#内存回收策略，一般有noeviction只返回错误，释放任何键(仅当redis作数据库时设置)；LRU最近最少使用的释放；ttl将设置了ttl的且存活时间较短的键释放；random随机释放；LFU：使用次数最少的释放</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#RDB持久存储相关</span></span><br><span class="line">save			<span class="comment">#这里是用来配置触发Redis的持久化条件，也就是什么时候将内存中的数据保存到硬盘，格式为save num1 num2表示num1秒内有num2个key发生变化则同步到磁盘</span></span><br><span class="line">rdbcompression	<span class="comment">#对于存储在磁盘的快照是否压缩存储，默认为yes</span></span><br><span class="line">rdbchecksum		<span class="comment">#对于存储的快照是否校验，默认yes</span></span><br><span class="line">dbfilename		<span class="comment">#设置快照名称，默认为dump.rdb</span></span><br><span class="line">dir				<span class="comment">#设置快照文件的存放路径，这个配置项一定是个目录，使用dbfilename作为文件名</span></span><br><span class="line">stop-writes-on-bgsave-error	<span class="comment">#当同步磁盘失败时是否停止接收数据，默认为yes</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#主从复制相关</span></span><br><span class="line">replica-serve-stale-data	<span class="comment">#主从复制时如何处理客户端请求，默认yes表示正常应答(会有过时数据)，no表示拒绝并返回错误提示</span></span><br><span class="line">replica-read-only			<span class="comment">#从节点是否处理请求，默认为yes</span></span><br><span class="line">repl-diskless-sync			<span class="comment">#主从数据复制是否使用无硬盘复制功能。默认值为no。</span></span><br><span class="line">repl-diskless-sync-delay	<span class="comment">#当启用无硬盘备份，服务器等待一段时间后才会通过套接字向从站传送RDB文件，这个等待时间是可配置的。这一点很重要，因为一旦传送开始，就不可能再为一个新到达的从站服务。从站则要排队等待下一次RDB传送。因此服务器等待一段时间以期更多的从站到达。延迟时间以秒为单位，默认为5秒。要关掉这一功能只需将它设置为0秒，传送会立即启动。默认值为5。</span></span><br><span class="line">repl-disable-tcp-nodelay	<span class="comment">#默认值为no。yes表示redis会使用较少量的TCP包和带宽向从站发送数据。但这会导致在从站增加一点数据的延时。Linux内核默认配置情况下最多40毫秒的延时。如果选择no，从站的数据延时不会那么多，但备份需要的带宽相对较多。</span></span><br><span class="line">slave-priority 100			<span class="comment">#指明slave的优先级，数字越小优先级越低</span></span><br><span class="line">min-slaves-to-write 3		<span class="comment">#如果slave服务器小于3个，master服务器就拒绝写请求</span></span><br><span class="line">min-slaves-max-lag 10		<span class="comment">#slave服务器不能滞后于master10s以上，否则master拒绝写</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#AOF主从相关</span></span><br><span class="line">appendonly		<span class="comment">#使用AOF主从方式，默认为no</span></span><br><span class="line">appendfilename	<span class="comment">#文件名称</span></span><br><span class="line">appendfsync		<span class="comment">#持久策略，no表示不执行fsync，由操作系统保证数据同步到磁盘，速度最快；always表示每次写入都执行fsync，以保证数据同步到磁盘；everysec表示每秒执行一次fsync，可能会导致丢失这1s数据</span></span><br><span class="line">auto-aof-rewrite-percentage 100	<span class="comment">#表示当前AOF文件已经是上次重写AOF是的二倍，立即触发重写AOF</span></span><br><span class="line">auto-aof-rewrite-min-size 64mb	<span class="comment">#表示当前AOF文件大小超过64mb时进行AOF重写操作</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#集群相关</span></span><br><span class="line">cluster-enabled	<span class="comment">#是否开启集群，默认为no</span></span><br><span class="line">cluster-config-file	<span class="comment">#集群配置文件的名称，每个节点都有一个集群相关的配置文件，持久化保存集群的信息</span></span><br><span class="line">cluster-node-timeout<span class="comment">#节点互连超时的阀值，集群节点超时毫秒数</span></span><br><span class="line">cluster-slave-validity-factor	<span class="comment">#可以配置值为10。在进行故障转移的时候，全部slave都会请求申请为master，但是有些slave可能与master断开连接一段时间了，导致数据过于陈旧，这样的slave不应该被提升为master。该参数就是用来判断slave节点与master断线的时间是否过长。判断方法是：比较slave断开连接的时间和(node-timeout * slave-validity-factor) + repl-ping-slave-period。如果节点超时时间为三十秒, 并且slave-validity-factor为10,假设默认的repl-ping-slave-period是10秒，即如果超过310秒slave将不会尝试进行故障转移</span></span><br><span class="line">cluster-migration-barrier	<span class="comment">#master的slave数量大于该值，slave才能迁移到其他孤立master上，如这个参数若被设为2，那么只有当一个主节点拥有2个可工作的从节点时，它的一个从节点会尝试迁移。</span></span><br></pre></td></tr></table></figure>
+
+
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/redis/" rel="tag"># redis</a>
+              <a href="/tags/epoll/" rel="tag"># epoll</a>
+              <a href="/tags/%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8/" rel="tag"># 多路复用</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/10/k8s-9-helm%E7%A8%8B%E5%BA%8F%E5%8C%85%E7%AE%A1%E7%90%86/" rel="prev" title="k8s(9)-helm程序包管理">
+      <i class="fa fa-chevron-left"></i> k8s(9)-helm程序包管理
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/02/12/Redis-2-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E5%92%8C%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="next" title="Redis(2)-数据类型和常用命令">
+      Redis(2)-数据类型和常用命令 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#基础"><span class="nav-number">1.</span> <span class="nav-text">基础</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#概念"><span class="nav-number">1.1.</span> <span class="nav-text">概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#epoll原理"><span class="nav-number">1.2.</span> <span class="nav-text">epoll原理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#持久存储"><span class="nav-number">1.3.</span> <span class="nav-text">持久存储</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#NoSql特性"><span class="nav-number">1.4.</span> <span class="nav-text">NoSql特性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#与memcached区别"><span class="nav-number">1.5.</span> <span class="nav-text">与memcached区别</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#安装"><span class="nav-number">2.</span> <span class="nav-text">安装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置文件"><span class="nav-number">3.</span> <span class="nav-text">配置文件</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Frdqy"
+      src="/images/head.jpg">
+  <p class="site-author-name" itemprop="name">Frdqy</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">101</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/DQYXACML" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;DQYXACML" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:1259178786@qq.com" title="E-Mail → mailto:1259178786@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友链
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://cenlg00bug.xyz/" title="http:&#x2F;&#x2F;cenlg00bug.xyz&#x2F;" rel="noopener" target="_blank">CENLG</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="http://mi0.xyz/" title="http:&#x2F;&#x2F;mi0.xyz&#x2F;" rel="noopener" target="_blank">Web安全</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Frdqy</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
